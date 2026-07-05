@@ -13,3 +13,7 @@ playwright-report/
 # internal tooling (not part of HYPERCADE)
 .qq/
 /scripts/
+
+# Claude agent docs — local only, never publish
+CLAUDE.md
+/docs/
