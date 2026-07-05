@@ -1,0 +1,11 @@
+services:
+  hypercade:
+    build: .
+    ports:
+      - '8787:8787'
+    volumes:
+      - hypercade-data:/app/server/data
+    restart: unless-stopped
+
+volumes:
+  hypercade-data:

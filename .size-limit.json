@@ -1,0 +1,6 @@
+[
+  { "name": "shell js (gz)", "path": "dist/assets/index-*.js", "limit": "40 KB" },
+  { "name": "three.js chunk (gz)", "path": "dist/assets/three-*.js", "limit": "160 KB" },
+  { "name": "box2d wasm", "path": "dist/assets/box2d-*.wasm", "limit": "500 KB", "gzip": false },
+  { "name": "box3d wasm", "path": "dist/assets/box3d-*.wasm", "limit": "500 KB", "gzip": false }
+]

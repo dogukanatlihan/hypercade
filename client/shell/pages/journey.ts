@@ -76,4 +76,14 @@ export const journeyPage: Page = (root, { navigate }) => {
 
   root.appendChild(page);
   void navigate;
+
+  // secret: idle on the map for 2 minutes → Daydreamer (banked into the next run)
+  const idleTimer = window.setTimeout(() => {
+    try {
+      localStorage.setItem('hypercade:mapIdle', '1');
+    } catch {
+      // storage blocked
+    }
+  }, 120_000);
+  return () => window.clearTimeout(idleTimer);
 };

@@ -48,6 +48,31 @@ export const profilePage: Page = (root) => {
       </div>
     </div>
     <div class="panel">
+      <h2>Last 12 weeks</h2>
+      <div style="display:grid; grid-template-rows:repeat(7,12px); grid-auto-flow:column; gap:3px; overflow-x:auto; padding-bottom:6px">
+        ${heatmap(s.runDays)}
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Locker — level rewards</h2>
+      <div class="grid">
+        ${[
+          { name: 'Aurora palette', at: 2, note: 'switch in settings' },
+          { name: 'Tinkerer title', at: 5, note: '' },
+          { name: 'Paper palette', at: 7, note: 'high-contrast' },
+          { name: 'Machinist title', at: 10, note: '' },
+          { name: 'Physicist title', at: 20, note: '' },
+          { name: 'Grandmaster title', at: 30, note: '' },
+        ]
+          .map(
+            (c) => `<div class="card" style="${level >= c.at ? '' : 'opacity:.45'}">
+              <span class="engine">${level >= c.at ? 'UNLOCKED' : `LEVEL ${c.at}`}</span>
+              <h3 style="font-size:.9rem">${c.name}</h3><span class="tagline">${c.note}</span></div>`,
+          )
+          .join('')}
+      </div>
+    </div>
+    <div class="panel">
       <h2>Badge shelf — ${s.badges.length}/${BADGES.length}</h2>
       <div class="grid">
         ${BADGES.filter((b) => !b.secret || s.badges.includes(b.id))
@@ -61,6 +86,18 @@ export const profilePage: Page = (root) => {
       </div>
     </div>
   `;
+
+  function heatmap(runDays: Record<string, number>): string {
+    const cells: string[] = [];
+    const now = Date.now();
+    for (let i = 83; i >= 0; i--) {
+      const day = new Date(now - i * 86_400_000).toISOString().slice(0, 10);
+      const n = runDays[day] ?? 0;
+      const alpha = n === 0 ? 0.08 : Math.min(0.25 + n * 0.15, 1);
+      cells.push(`<span title="${day}: ${n} runs" style="width:12px;height:12px;border-radius:3px;background:color-mix(in srgb, var(--c-glow) ${Math.round(alpha * 100)}%, var(--c-surface-2))"></span>`);
+    }
+    return cells.join('');
+  }
 
   const input = page.querySelector<HTMLInputElement>('input')!;
   page.querySelector('.save-nick')!.addEventListener('click', () => {
