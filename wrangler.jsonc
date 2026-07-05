@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "hypercade",
+  "main": "worker/index.ts",
+  "compatibility_date": "2024-11-01",
+  // No compatibility_flags: the Worker uses only WebCrypto + D1 + Hono, no node builtins.
+
+  // Static client (vite build -> ../dist). run_worker_first=true makes the Worker
+  // handle EVERY request: /api/* is routed by Hono, everything else falls through
+  // to env.ASSETS.fetch (which the Worker wraps to add immutable cache headers).
+  // not_found_handling=single-page-application => unmatched GETs resolve to
+  // index.html, giving the SPA client-side routing (mirrors Fastify's SPA fallback).
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hypercade",
+      // Run `wrangler d1 create hypercade` and paste the printed database_id here.
+      "database_id": "REPLACE_WITH_D1_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}
