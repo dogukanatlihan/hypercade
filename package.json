@@ -1,0 +1,40 @@
+{
+  "name": "hypercade",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite client",
+    "dev:server": "tsx watch server/index.ts",
+    "build": "vite build client",
+    "preview": "vite preview client",
+    "typecheck": "tsc --noEmit",
+    "wasm": "bash wasm/build.sh",
+    "harness": "node --experimental-strip-types wasm/harness/run.ts",
+    "test": "vitest run",
+    "smoke": "playwright test",
+    "budgets": "size-limit",
+    "start": "tsx server/index.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "fastify": "^5.2.0",
+    "three": "^0.170.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@size-limit/file": "^11.1.6",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.5",
+    "@types/three": "^0.170.0",
+    "size-limit": "^11.1.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
+  }
+}

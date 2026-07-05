@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+Box3DTestApp/
+server/data/*.db*
+client/public/wasm/*.wasm
+client/sdk/gen/
+coverage/
+test-results/
+playwright-report/
