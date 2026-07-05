@@ -1,0 +1,125 @@
+{
+  "protocolVersions": [
+    "2025-11-25",
+    "2025-06-18",
+    "2025-03-26",
+    "2024-11-05"
+  ],
+  "defaultProfile": "standard",
+  "profiles": {
+    "standard": [
+      "sbox_health",
+      "sbox_doctor",
+      "sbox_compile",
+      "sbox_run_tests",
+      "sbox_console",
+      "sbox_editor",
+      "sbox_query",
+      "sbox_object",
+      "sbox_scene",
+      "sbox_assets",
+      "sbox_batch",
+      "sbox_raw_command"
+    ],
+    "full": [
+      "sbox_health",
+      "sbox_doctor",
+      "sbox_compile",
+      "sbox_run_tests",
+      "sbox_console",
+      "sbox_editor",
+      "sbox_query",
+      "sbox_object",
+      "sbox_scene",
+      "sbox_assets",
+      "sbox_batch",
+      "sbox_raw_command"
+    ]
+  },
+  "toolAnnotations": {
+    "sbox_health": {
+      "title": "S&box Health",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "sbox_doctor": {
+      "title": "S&box Doctor",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "sbox_compile": {
+      "title": "S&box Compile",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "sbox_run_tests": {
+      "title": "S&box Run Tests",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "sbox_console": {
+      "title": "S&box Console",
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "sbox_editor": {
+      "title": "S&box Editor",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "sbox_query": {
+      "title": "S&box Query",
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "sbox_object": {
+      "title": "S&box Objects",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "sbox_scene": {
+      "title": "S&box Scene",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "sbox_assets": {
+      "title": "S&box Assets",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "sbox_batch": {
+      "title": "S&box Batch",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "sbox_raw_command": {
+      "title": "S&box Raw Command",
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    }
+  }
+}

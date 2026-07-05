@@ -24,6 +24,7 @@ export interface ReleaseEvent {
 
 interface Handlers {
   action: Set<() => void>; // tap OR Space/Enter — the universal one-touch verb
+  actionDown: Set<() => void>; // pointerdown OR Space/Enter — zero-latency verb for one-touch games
   tap: Set<(x: number, y: number) => void>;
   down: Set<(x: number, y: number) => void>;
   drag: Set<(e: DragEvent) => void>;
@@ -37,10 +38,12 @@ const TAP_SLOP = 12;
 export class Input {
   readonly keys = new Set<string>();
   pointerDown = false;
+  /** 'mouse' | 'touch' | 'pen' — last pointer seen; games can scale sensitivities. */
+  pointerType = 'mouse';
   x = 0;
   y = 0;
 
-  private handlers: Handlers = { action: new Set(), tap: new Set(), down: new Set(), drag: new Set(), release: new Set(), key: new Set() };
+  private handlers: Handlers = { action: new Set(), actionDown: new Set(), tap: new Set(), down: new Set(), drag: new Set(), release: new Set(), key: new Set() };
   private startX = 0;
   private startY = 0;
   private startT = 0;
@@ -67,12 +70,14 @@ export class Input {
         // synthetic events (tests) carry pointerIds the browser doesn't know
       }
       const [x, y] = toLocal(e);
+      if (e.pointerType) this.pointerType = e.pointerType;
       this.pointerDown = true;
       this.x = this.lastX = this.startX = x;
       this.y = this.lastY = this.startY = y;
       this.startT = this.lastT = performance.now();
       this.vx = this.vy = 0;
       this.handlers.down.forEach((h) => h(x, y));
+      this.handlers.actionDown.forEach((h) => h());
     };
 
     const onMove = (e: PointerEvent): void => {
@@ -121,6 +126,7 @@ export class Input {
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
         this.handlers.action.forEach((h) => h());
+        this.handlers.actionDown.forEach((h) => h());
       }
     };
     const onKeyUp = (e: KeyboardEvent): void => {
@@ -144,10 +150,17 @@ export class Input {
     );
   }
 
-  /** Universal one-touch verb: tap, click, Space, Enter. */
+  /** Universal one-touch verb: tap, click, Space, Enter. Fires on tap-UP (qualified). */
   onAction(h: () => void): () => void {
     this.handlers.action.add(h);
     return () => this.handlers.action.delete(h);
+  }
+
+  /** Zero-latency one-touch verb: fires on pointerDOWN (any press) or Space/Enter.
+   *  Use for flap/drop games — frantic clicking must never be eaten by tap slop. */
+  onActionDown(h: () => void): () => void {
+    this.handlers.actionDown.add(h);
+    return () => this.handlers.actionDown.delete(h);
   }
 
   onTap(h: (x: number, y: number) => void): () => void {
@@ -184,7 +197,7 @@ export class Input {
   }
 
   clearHandlers(): void {
-    this.handlers = { action: new Set(), tap: new Set(), down: new Set(), drag: new Set(), release: new Set(), key: new Set() };
+    this.handlers = { action: new Set(), actionDown: new Set(), tap: new Set(), down: new Set(), drag: new Set(), release: new Set(), key: new Set() };
   }
 
   dispose(): void {

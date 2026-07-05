@@ -11,9 +11,12 @@ import type { Physics2D, PairEvent, BodyState2D, HitEvent2D } from '@sdk/physics
 import { BODY_STATIC, BODY_DYNAMIC, SHAPE_CONTACT_EVENTS, SHAPE_HIT_EVENTS } from '@sdk/physics2d';
 import { gameMeta } from '@shared/registry';
 
-// world units are metres; camera fits the whole siege yard in both orientations
-const VIEW_W = 19;
+// world units are metres; camera anchors the sling at SLING_FRAC of the screen
+// width (empty drag room to its left) and keeps the yard visible out to
+// VIEW_RIGHT in both orientations (min()-scale: fit height on wide screens)
+const VIEW_RIGHT = 17.2; // rightmost world x that must stay on screen
 const VIEW_H = 12;
+const SLING_FRAC = 0.21; // sling post sits ~21% in from the left edge
 const GRAVITY = -10;
 const SLING_X = 2.3;
 const SLING_Y = 2.5;
@@ -155,11 +158,13 @@ export function createGame(): Game {
   const hit: HitEvent2D = { x: 0, y: 0, nx: 0, ny: 0, speed: 0, slotA: 0, userA: 0, slotB: 0, userB: 0 };
   let detachFns: (() => void)[] = [];
 
-  // ---- camera (fits VIEW_W × VIEW_H in portrait and landscape) ----
+  // ---- camera (sling anchored at SLING_FRAC · yard visible to VIEW_RIGHT) ----
 
   function cam(): { s: number; ox: number; pad: number } {
-    const s = Math.min(ctx.width / VIEW_W, ctx.height / VIEW_H);
-    return { s, ox: (ctx.width - VIEW_W * s) / 2, pad: Math.min(ctx.height * 0.05, 34) };
+    // fit the sling→yard span into the width right of the anchor, but never
+    // exceed the height fit — on wide screens the height term wins (zoom cap)
+    const s = Math.min((ctx.width * (1 - SLING_FRAC)) / (VIEW_RIGHT - SLING_X), ctx.height / VIEW_H);
+    return { s, ox: ctx.width * SLING_FRAC - SLING_X * s, pad: Math.min(ctx.height * 0.05, 34) };
   }
 
   function toWorld(px: number, py: number): [number, number] {

@@ -733,8 +733,10 @@ export function createGame(): Game {
         let tvz = 0;
         const dragMag = Math.abs(dragDX) + Math.abs(dragDY);
         if (dragMag > 0) {
-          tvx = (dragDX * DRAG_SENS) / dt;
-          tvz = (dragDY * DRAG_SENS) / dt;
+          // mouse pointers cover far more px per gesture than thumbs — tone it down
+          const sens = ctx.input.pointerType === 'mouse' ? DRAG_SENS * 0.45 : DRAG_SENS;
+          tvx = (dragDX * sens) / dt;
+          tvz = (dragDY * sens) / dt;
         } else if (!ctx.input.pointerDown) {
           let kx = ctx.input.axis();
           let kz = 0;

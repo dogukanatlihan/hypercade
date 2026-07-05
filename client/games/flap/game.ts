@@ -183,7 +183,7 @@ export function createGame(): Game {
       const c = ctx.canvas.getContext('2d');
       if (!c) throw new Error('no 2d context');
       c2d = c;
-      detachInput = ctx.input.onAction(() => flap());
+      detachInput = ctx.input.onActionDown(() => flap());
       if (import.meta.env.DEV) {
         (window as unknown as Record<string, unknown>)['__flapDbg'] = {
           state: () => {

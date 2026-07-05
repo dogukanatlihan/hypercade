@@ -1,0 +1,16 @@
+{
+  "artifacts": {},
+  "backend": "local",
+  "command": "session-cleanup",
+  "details": {},
+  "duration_ms": 0,
+  "failure_category": "",
+  "finished_at": "2026-07-05T18:17:57.352008Z",
+  "record_path": "",
+  "run_id": "95597a82df67",
+  "stage": "review_gate",
+  "started_at": "2026-07-05T18:17:57.352008Z",
+  "status": "cleared",
+  "summary": "Session cleanup removed review gate",
+  "transport": "hook"
+}

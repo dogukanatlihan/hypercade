@@ -23,6 +23,14 @@ const LAYER_HALF_H = 0.16;
 const SPACING = 2.2; // vertical distance between layer tops
 const POLE_R = 0.55;
 
+// ring-sector wedge VISUALS (the physics boxes above are untouched) — annular
+// sectors that tile the ring with no overlap or z-fighting: thetaLength =
+// SECTOR - WEDGE_GAP, thetaStart = slot index * SECTOR, hole for the pole.
+const WEDGE_GAP = 0.05; // angular gap (rad) so adjacent wedges never touch
+const WEDGE_R_INNER = 0.46; // inner radius — tucks just behind the pole (POLE_R), no centre seam
+const WEDGE_R_OUTER = RING_MID + WEDGE_HZ; // outer rim ≈ 2.3, matches the physics box extent
+const WEDGE_CURVE_SEGS = 14; // arc tessellation for the shared sector geometry
+
 // ---- ball / physics tuning ----
 const BALL_R = 0.34;
 const GRAVITY_Y = -20;
@@ -41,6 +49,10 @@ const SMASH_PASS_TICKS = 3;
 // ---- controls ----
 const DRAG_SENS = 0.0075; // rad per px
 const KEY_ROT_SPEED = 2.8; // rad/s (A/D + arrows parity)
+
+// ---- camera follow ----
+const CAM_FOLLOW_BASE = 4; // gentle base follow rate — preserves the normal-bounce feel
+const CAM_FOLLOW_VK = 2.0; // extra rate per unit of downward speed — keeps fast smash-falls framed
 
 // ---- streaming / rules ----
 const LIVE_BELOW = 7;
@@ -84,7 +96,7 @@ export function createGame(): Game {
   let scene: THREE.Scene;
   let camera: THREE.PerspectiveCamera;
   let sun: THREE.DirectionalLight;
-  let wedgeGeo: THREE.BoxGeometry;
+  let wedgeGeo: THREE.ExtrudeGeometry;
   let ballGeo: THREE.SphereGeometry;
   let poleGeo: THREE.CylinderGeometry;
   let ringGeo: THREE.RingGeometry;
@@ -243,7 +255,9 @@ export function createGame(): Game {
     const p = new THREE.Vector3();
     for (const child of l.group.children) {
       if (!(child instanceof THREE.Mesh) || child.geometry !== wedgeGeo) continue;
-      child.getWorldPosition(p);
+      const a = (child.userData['a'] as number) ?? 0;
+      p.set(Math.sin(a) * RING_MID, 0, Math.cos(a) * RING_MID); // ring position in layer-local space
+      l.group.localToWorld(p);
       const n = 1 + Math.floor(fxRand() * 2);
       for (let i = 0; i < n && shards.length < 70; i++) {
         const isRed = child.material === redMat;
@@ -341,8 +355,8 @@ export function createGame(): Game {
       });
       const mat = kind === RED ? redMat : k % 2 === 0 ? safeMatA : safeMatB;
       const mesh = new THREE.Mesh(wedgeGeo, mat);
-      mesh.position.set(off[0], 0, off[2]);
-      mesh.rotation.y = a;
+      mesh.rotation.y = a; // shared sector geo is centred on the pole — rotate it onto this slot
+      mesh.userData['a'] = a; // slot angle, used to place shatter shards at the ring
       group.add(mesh);
     }
     phys.setFilter(handle, CAT_LAYER, CAT_BALL); // explicit category BOTH sides (ENGINE-NOTES #1)
@@ -459,7 +473,18 @@ export function createGame(): Game {
       scene.add(sun);
       scene.add(sun.target);
 
-      wedgeGeo = new THREE.BoxGeometry(WEDGE_HX * 2, LAYER_HALF_H * 2, WEDGE_HZ * 2);
+      // ring-sector wedge: one shared annular sector centred on the pole axis,
+      // spanning SECTOR - WEDGE_GAP so adjacent slots tile the ring without
+      // overlapping or z-fighting (replaces the intersecting per-slot boxes).
+      const wedgeHalf = (SECTOR - WEDGE_GAP) / 2;
+      const wedgeShape = new THREE.Shape();
+      wedgeShape.absarc(0, 0, WEDGE_R_OUTER, -wedgeHalf, wedgeHalf, false); // outer arc CCW
+      wedgeShape.absarc(0, 0, WEDGE_R_INNER, wedgeHalf, -wedgeHalf, true); // inner arc CW → annulus with a hole
+      wedgeShape.closePath();
+      wedgeGeo = new THREE.ExtrudeGeometry(wedgeShape, { depth: LAYER_HALF_H * 2, bevelEnabled: false, curveSegments: WEDGE_CURVE_SEGS });
+      wedgeGeo.translate(0, 0, -LAYER_HALF_H); // centre the thickness on the layer plane
+      wedgeGeo.rotateX(-Math.PI / 2); // lay flat in XZ, thickness along Y
+      wedgeGeo.rotateY(-Math.PI / 2); // bisector +X → +Z, so mesh.rotation.y = slot angle orients it
       ballGeo = new THREE.SphereGeometry(BALL_R, 24, 18);
       poleGeo = new THREE.CylinderGeometry(POLE_R, POLE_R, 140, 24);
       ringGeo = new THREE.RingGeometry(1, 1.16, 36);
@@ -634,7 +659,11 @@ export function createGame(): Game {
 
       updateShards(dt);
       updateRings(dt);
-      camY += (-depth * SPACING - camY) * Math.min(dt * 4, 1);
+      // camera follow: base rate keeps the gentle feel at normal bounce speeds,
+      // but accelerates with the ball's downward speed so fast smash-falls don't
+      // outrun the camera and drop out the bottom of frame.
+      const fallSpeed = Math.max(0, -tmp.vy);
+      camY += (-depth * SPACING - camY) * Math.min((CAM_FOLLOW_BASE + fallSpeed * CAM_FOLLOW_VK) * dt, 1);
       shake = Math.max(shake - dt * 1.6, 0);
     },
 

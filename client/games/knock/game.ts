@@ -1,8 +1,8 @@
 // knock — TOPPLE RANGE (MECHANICS §12). Box3D + three.js.
-// Flick to hurl light balls at fairground structures; clear every can with a
-// limited ball budget across 20 scenes. Balls are cheap but LIGHT — the smart
-// play is toppling one structure into another. Demolition chains (structure A
-// disturbing structure B within a rolling 3s window) pay the scene bonus.
+// Drag back to aim, pull down for power, release to hurl light balls at fairground
+// structures; clear every can with a limited ball budget across 20 scenes. Balls are
+// cheap but LIGHT — the smart play is toppling one structure into another. Demolition
+// chains (structure A disturbing structure B within a rolling 3s window) pay the bonus.
 // Score axis (shared/scoring.ts): scenes cleared + demolition bonuses (max 40).
 
 import * as THREE from 'three';
@@ -21,10 +21,15 @@ const BALL_R = 0.38;
 const BALL_DENSITY = 0.4; // light on purpose — momentum must come from structures
 const FWD_MIN = 9;
 const FWD_MAX = 30;
-const FLICK_TO_FWD = 0.013; // px/s → m/s forward
-const FLICK_TO_LAT = 0.011; // px/s → m/s lateral
 const LAT_MAX = 8;
-const MIN_FLICK_VY = 140; // upward px/s below which a release is not a throw
+// drag-to-aim (slingshot): horizontal drag = azimuth, downward drag = pull-back power
+const AIM_LAT_SPAN_PX = 220; // horizontal drag (CSS px) for full lateral aim
+const AIM_PULL_SPAN_PX = 260; // downward drag (CSS px) for full power
+const AIM_CANCEL_PX = 15; // total drag below this cancels instead of throwing
+const AIM_SLOWMO_SCALE = 0.35; // physics timescale while aiming (always on — it's gameplay)
+const KB_LAT_RATE = 12; // keyboard azimuth sweep (m/s per second of hold)
+const KB_FWD_RATE = 18; // keyboard pitch/power sweep
+const KB_FWD_DEFAULT = 17; // Space throws at this power when pitch is untouched
 const CRATE_HALF = 0.42;
 const CAN_HX = 0.2;
 const CAN_HY = 0.3;
@@ -182,11 +187,13 @@ export function createGame(): Game {
   let demoBonuses = 0;
   let ballsSpared = 0;
   let bests: number[] = [];
-  // input / aim
-  let aiming = false;
-  let aimVx = 0;
-  let aimVy = 0;
-  let lastAimT = 0;
+  // input / aim — explicit drag-to-aim (pointer) + arrow-key parity
+  let aiming = false; // pointer drag-aim in progress
+  let aimForward = FWD_MIN; // launch speed from vertical pull-back
+  let aimLat = 0; // lateral aim from horizontal drag
+  let kbForward = KB_FWD_DEFAULT; // keyboard aim (persistent across throws)
+  let kbLat = 0;
+  let kbActive = false; // an arrow/WASD key is steering this frame
   const detachFns: (() => void)[] = [];
 
   const reduced = (): boolean => ctx.settings().reducedMotion;
@@ -373,10 +380,18 @@ export function createGame(): Game {
 
   // ---- throwing ----
 
-  function velFrom(vxPx: number, vyPx: number): [number, number] {
-    const fwd = clamp(-vyPx * FLICK_TO_FWD, FWD_MIN, FWD_MAX);
-    const lat = clamp(vxPx * FLICK_TO_LAT, -LAT_MAX, LAT_MAX);
-    return [fwd, lat];
+  /** Map a drag (CSS px, measured from the press point) to launch speed + azimuth. */
+  function aimFromDrag(totalX: number, totalY: number): void {
+    aimLat = clamp((totalX / AIM_LAT_SPAN_PX) * LAT_MAX, -LAT_MAX, LAT_MAX);
+    const pull = Math.max(totalY, 0); // drag DOWN = pull back = more power
+    aimForward = clamp(FWD_MIN + (pull / AIM_PULL_SPAN_PX) * (FWD_MAX - FWD_MIN), FWD_MIN, FWD_MAX);
+  }
+
+  /** The aim currently driving the trajectory preview + slow-mo, or null when idle. */
+  function activeAim(): [number, number] | null {
+    if (aiming) return [aimForward, aimLat];
+    if (kbActive) return [kbForward, kbLat];
+    return null;
   }
 
   function throwBall(fwd: number, lat: number): void {
@@ -401,25 +416,11 @@ export function createGame(): Game {
     updateSub();
   }
 
-  /** Tap / Space parity: assisted straight throw at the first remaining can. */
-  function assistedThrow(): void {
+  /** Keyboard parity: Space/Enter throws at the current keyboard aim
+   *  (default power + whatever azimuth/pitch the arrows have set). */
+  function keyboardThrow(): void {
     if (mode !== 'play' || ballsLeft <= 0) return;
-    let target: Rec | null = null;
-    for (const r of recs) {
-      if (!r.alive) continue;
-      if (r.kind === KIND_TARGET) {
-        target = r;
-        break;
-      }
-      if (r.kind === KIND_ARMOR && !target) target = r;
-    }
-    const fwd = 17;
-    let lat = 0;
-    if (target) {
-      const t = (LAUNCH_Z - target.mesh.position.z) / fwd;
-      if (t > 0.05) lat = clamp((target.mesh.position.x - LAUNCH_X) / t, -LAT_MAX, LAT_MAX);
-    }
-    throwBall(fwd, lat);
+    throwBall(kbForward, kbLat);
   }
 
   // ---- demolition chain (twist) ----
@@ -536,7 +537,8 @@ export function createGame(): Game {
     demoBonuses += demo;
     ballsSpared += ballsLeft;
     ctx.hud.setScore(score);
-    ctx.hud.flash(demo ? 'FULL DEMOLITION +2' : 'CLEARED +1', 1100);
+    ctx.hud.flash('SCENE CLEAR', 1200);
+    if (demo) ctx.hud.showCombo('FULL DEMOLITION +2', true);
     ctx.audio.fanfare();
     ctx.audio.buzz(30);
     bests[sceneNo - 1] = Math.max(bests[sceneNo - 1] ?? 0, 1 + demo);
@@ -603,12 +605,14 @@ export function createGame(): Game {
   }
 
   function updateAim(): void {
-    if (!aiming || mode !== 'play' || ballsLeft <= 0 || -aimVy < MIN_FLICK_VY * 0.6) {
+    const aim = activeAim();
+    if (!aim || mode !== 'play' || ballsLeft <= 0) {
       hideAim();
       return;
     }
-    const [fwd, lat] = velFrom(aimVx, aimVy);
+    const [fwd, lat] = aim;
     const up = 3.4 + fwd * 0.11;
+    // ballistic preview: pure kinematics under the world's gravity (no engine calls)
     for (let i = 0; i < aimDots.length; i++) {
       const d = aimDots[i]!;
       const t = (i + 1) * 0.085;
@@ -735,31 +739,31 @@ export function createGame(): Game {
       resize(ctx.width, ctx.height);
 
       detachFns.push(
+        // explicit drag-to-aim: press to start, drag to set azimuth + power, release to fire
         ctx.input.onDown(() => {
-          if (mode !== 'play') return;
+          if (mode !== 'play' || ballsLeft <= 0) return;
           aiming = true;
-          aimVx = 0;
-          aimVy = 0;
-          lastAimT = performance.now();
+          aimLat = 0;
+          aimForward = FWD_MIN;
         }),
         ctx.input.onDrag((e) => {
           if (!aiming) return;
-          const now = performance.now();
-          const dt = Math.max(now - lastAimT, 1) / 1000;
-          lastAimT = now;
-          aimVx = 0.6 * (e.dx / dt) + 0.4 * aimVx;
-          aimVy = 0.6 * (e.dy / dt) + 0.4 * aimVy;
+          aimFromDrag(e.totalX, e.totalY);
         }),
         ctx.input.onRelease((e) => {
           const wasAiming = aiming;
           aiming = false;
           hideAim();
           if (!wasAiming || mode !== 'play' || ballsLeft <= 0) return;
-          if (-e.vy < MIN_FLICK_VY || -e.totalY < 10) return; // not an upward flick
-          const [fwd, lat] = velFrom(e.vx, e.vy);
-          throwBall(fwd, lat);
+          if (Math.hypot(e.totalX, e.totalY) < AIM_CANCEL_PX) return; // tiny drag = cancel
+          aimFromDrag(e.totalX, e.totalY);
+          throwBall(aimForward, aimLat);
         }),
-        ctx.input.onAction(() => assistedThrow()),
+        // keyboard parity: Space/Enter throws at the current aim (arrows steer it in step())
+        ctx.input.onKey((code, down) => {
+          if (!down || mode !== 'play') return;
+          if (code === 'Space' || code === 'Enter') keyboardThrow();
+        }),
       );
     },
 
@@ -777,19 +781,44 @@ export function createGame(): Game {
       clearTimer = 0;
       hasThrown = false;
       aiming = false;
+      kbActive = false;
+      kbLat = 0;
+      kbForward = KB_FWD_DEFAULT;
+      aimLat = 0;
+      aimForward = FWD_MIN;
       bests = ctx.storage.get<number[]>('bests', []);
       buildScene(1);
       mode = 'play';
       ctx.hud.setScore(0);
       hintActive = true;
-      ctx.hud.setSub('flick up to hurl · topple towers into each other');
+      ctx.hud.setSub('drag back to aim · pull down for power · topple towers together');
     },
 
     step(dt: number): void {
       if (mode === 'idle' || mode === 'over') return;
       runClock += dt;
       sceneClock += dt;
-      const eff = slowMo > 0 ? dt * SLOWMO_SCALE : dt;
+
+      // keyboard aim: arrows/WASD steer azimuth (lat) + pitch (power); Space throws via onKey
+      kbActive = false;
+      if (mode === 'play' && ballsLeft > 0) {
+        const keys = ctx.input.keys;
+        const lat = (keys.has('ArrowRight') || keys.has('KeyD') ? 1 : 0) - (keys.has('ArrowLeft') || keys.has('KeyA') ? 1 : 0);
+        const pit = (keys.has('ArrowUp') || keys.has('KeyW') ? 1 : 0) - (keys.has('ArrowDown') || keys.has('KeyS') ? 1 : 0);
+        if (lat !== 0) {
+          kbLat = clamp(kbLat + lat * KB_LAT_RATE * dt, -LAT_MAX, LAT_MAX);
+          kbActive = true;
+        }
+        if (pit !== 0) {
+          kbForward = clamp(kbForward + pit * KB_FWD_RATE * dt, FWD_MIN, FWD_MAX);
+          kbActive = true;
+        }
+      }
+
+      // slow-mo while aiming is ALWAYS on (it is the aiming mechanic); the scene-clear
+      // celebration slow-mo (slowMo) stays gated by reducedMotion at its source.
+      const aimingNow = mode === 'play' && (aiming || kbActive);
+      const eff = aimingNow ? dt * AIM_SLOWMO_SCALE : slowMo > 0 ? dt * SLOWMO_SCALE : dt;
       slowMo = Math.max(slowMo - dt, 0);
       phys.step(eff, SUBSTEPS);
 
@@ -867,12 +896,12 @@ export function createGame(): Game {
 
       if (mode === 'clearing') {
         clearTimer += dt;
-        if (clearTimer > 2.0) {
+        if (clearTimer > 1.4) {
           if (sceneNo >= SCENE_COUNT) {
-            finish(true);
+            finish(true); // all 20 scenes cleared → run ends (win)
           } else {
             sceneNo += 1;
-            buildScene(sceneNo);
+            buildScene(sceneNo); // load the next scene in-place, no endRun
             mode = 'play';
           }
         }

@@ -27,8 +27,10 @@ const SPEED_FAST = 7.0; // m/s at/above → THICK_MIN
 const INK_DENSITY = 1.4; // fixed — mass scales with drawn area
 const NO_DRAW_R = 0.55; // can't ink directly onto a ball
 
-const REST_FAIL_S = 4; // balls at rest this long without touching = fail
+const REST_FAIL_S = 3; // ink spent + everything settled this long, no reunion = retry
 const REST_SPEED = 0.09;
+const INK_EMPTY = 0.3; // ink budget effectively spent (can't draw a useful stroke)
+const MAX_FAILS = 3; // consecutive misses on one level before the run is banked
 
 // user-data tags (balls MUST be 1 and 2 — solve = contactBegin between them)
 const TAG_BALL_A = 1;
@@ -69,6 +71,7 @@ export function createGame(): Game {
   let alive = false;
   let outcome: 'solved' | 'failed' | null = null;
   let pendingT = 0;
+  let failStreak = 0; // consecutive misses on the CURRENT level (reset on solve/advance)
   let simT = 0;
   let restT = 0;
   let lastTickSec = -1;
@@ -293,7 +296,8 @@ export function createGame(): Game {
     if (!alive) return;
     alive = false;
     outcome = 'solved';
-    pendingT = 1.4;
+    pendingT = 1.4; // hold on the reunion, then auto-advance in-place
+    failStreak = 0; // a solve clears the miss streak for this level
 
     const ha = phys.readBody(ballA, st);
     const hb = phys.readBody(ballB, st2);
@@ -319,7 +323,9 @@ export function createGame(): Game {
 
     score = computeScore();
     ctx.hud.setScore(score);
+    ctx.hud.flash('LEVEL CLEAR', 1200);
     ctx.hud.showCombo(one ? 'ONE STROKE!' : under ? 'UNDER PAR!' : 'SOLVED', one || under);
+    ctx.audio.fanfare();
     ctx.audio.chime(6);
     ctx.audio.pop(10);
     ctx.audio.buzz(30);
@@ -344,12 +350,67 @@ export function createGame(): Game {
         oneStrokeSolves: sum(oneArr), // 'Minimalist' badge
         levelsSolved: sum(solvedArr),
         underParSolves: sum(underArr),
+        allClear: sum(solvedArr) >= LEVEL_COUNT ? 1 : 0,
         level: levelIdx + 1,
         solved: outcome === 'solved' ? 1 : 0,
         strokes,
         inkUsed: Math.round(inkUsed * 10) / 10,
       },
     });
+  }
+
+  /** (Re)build the current level in-place — fresh world, ink refilled, run alive. */
+  function loadLevel(): void {
+    phys.init(0, GRAVITY); // frees every body from the previous level
+    phys.setHitEventThreshold(1.2);
+    level = LEVELS[levelIdx]!;
+
+    inkLeft = level.ink;
+    inkUsed = 0;
+    strokes = 0;
+    simT = 0;
+    restT = 0;
+    pendingT = 0;
+    lastTickSec = -1;
+    lastThudT = -10;
+    outcome = null;
+    drawing = false;
+    strokePts = [];
+    strokeLen = 0;
+    lastSub = '';
+
+    buildLevel(); // resets saws/movers/winds/inks and spawns the two balls
+    alive = true;
+    ctx.storage.set('level', levelIdx);
+    updateSub();
+  }
+
+  /** After a solve: bank the run once every level is cleared, else move on. */
+  function advanceLevel(): void {
+    if (sum(solvedArr) >= LEVEL_COUNT) {
+      finishRun(); // all 24 solved — report cumulative score
+      return;
+    }
+    let next = levelIdx;
+    for (let step = 1; step <= LEVEL_COUNT; step++) {
+      const cand = (levelIdx + step) % LEVEL_COUNT;
+      if (solvedArr[cand] !== 1) {
+        next = cand;
+        break;
+      }
+    }
+    levelIdx = next;
+    loadLevel();
+  }
+
+  /** After a miss: retry the same level, or bank the run after 3 in a row. */
+  function retryLevel(): void {
+    failStreak += 1;
+    if (failStreak >= MAX_FAILS) {
+      finishRun(); // banks stars/XP earned so far
+      return;
+    }
+    loadLevel();
   }
 
   // ---- per-step systems ----
@@ -393,18 +454,22 @@ export function createGame(): Game {
   }
 
   function checkFail(dt: number): void {
-    // a lost ball is an immediate fail (level pits — side walls prevent escapes)
+    // a ball that leaves the world (pits below, generous margins elsewhere) retries at once
     for (const h of [ballA, ballB]) {
-      if (phys.readBody(h, st) && st.y < -1.2) {
-        fail('BALL LOST');
+      if (phys.readBody(h, st) && (st.y < -1.2 || st.x < -1.5 || st.x > LEVEL_W + 1.5 || st.y > LEVEL_H + 6)) {
+        fail('BALL LOST — RETRY');
         return;
       }
     }
-    // rest fail: after the first stroke, everything settled without a reunion
-    if (strokes === 0 || drawing) {
+    // The puzzle waits indefinitely while the player can still act: with ink left
+    // in the pen (or a stroke in progress) the rest-timer stays parked — no fail.
+    // This is what makes "stare 30s, then draw" safe.
+    if (inkLeft > INK_EMPTY || drawing) {
       restT = 0;
+      lastTickSec = -1;
       return;
     }
+    // Ink is spent. ONLY now does the settle clock run — fail if nothing reunites.
     let moving = isMoving(ballA, 0.2) || isMoving(ballB, 0.2);
     if (!moving) for (const ink of inks) if (isMoving(ink.h, 0.25)) { moving = true; break; }
     if (!moving) for (const s of saws) if (isMoving(s.board, 0.2)) { moving = true; break; }
@@ -419,7 +484,7 @@ export function createGame(): Game {
       lastTickSec = sec;
       ctx.audio.tick();
     }
-    if (restT >= REST_FAIL_S) fail(inkLeft < 0.3 ? 'OUT OF INK' : 'ALL SETTLED');
+    if (restT >= REST_FAIL_S) fail('INK OUT — RETRY');
   }
 
   function updateSub(): void {
@@ -470,44 +535,29 @@ export function createGame(): Game {
 
       if (import.meta.env.DEV) {
         (window as unknown as Record<string, unknown>)['__drawDbg'] = {
-          state: () => ({ levelIdx, alive, score, strokes, inkLeft, inkUsed, restT, inks: inks.length, outcome }),
+          state: () => ({ levelIdx, alive, score, strokes, inkLeft, inkUsed, restT, inks: inks.length, outcome, failStreak }),
         };
       }
     },
 
     start(): void {
-      phys.init(0, GRAVITY);
-      phys.setHitEventThreshold(1.2);
-
       solvedArr = loadArr('solved');
       underArr = loadArr('under');
       oneArr = loadArr('one');
       const savedLevel = ctx.storage.get<number>('level', 0);
       levelIdx = Number.isInteger(savedLevel) ? Math.min(Math.max(savedLevel, 0), LEVEL_COUNT - 1) : 0;
-      level = LEVELS[levelIdx]!;
+      // resume on the first unsolved level if the saved one is already cleared
+      if (solvedArr[levelIdx] === 1 && sum(solvedArr) < LEVEL_COUNT) {
+        for (let i = 0; i < LEVEL_COUNT; i++) if (solvedArr[i] !== 1) { levelIdx = i; break; }
+      }
 
-      inkLeft = level.ink;
-      inkUsed = 0;
-      strokes = 0;
-      simT = 0;
-      restT = 0;
-      pendingT = 0;
-      lastTickSec = -1;
-      lastThudT = -10;
-      outcome = null;
-      drawing = false;
-      strokePts = [];
-      strokeLen = 0;
+      failStreak = 0;
       confetti = [];
       heart = null;
-      lastSub = '';
-
-      buildLevel();
-
-      alive = true;
       score = computeScore();
       ctx.hud.setScore(score);
-      updateSub();
+
+      loadLevel(); // builds the world in-place and sets alive
     },
 
     step(dt: number): void {
@@ -530,7 +580,9 @@ export function createGame(): Game {
       if (pendingT > 0) {
         pendingT -= dt;
         if (pendingT <= 0) {
-          finishRun();
+          // in-place transition — a run only ends inside advance/retry (all-clear or 3 misses)
+          if (outcome === 'solved') advanceLevel();
+          else retryLevel();
           return;
         }
       }
@@ -747,14 +799,14 @@ export function createGame(): Game {
         drawHeart(c2d, X(heart.x), Y(heart.y), (0.5 + Math.min(heart.t * 1.6, 0.4)) * s, colors.danger, Math.max(0, a));
       }
 
-      // settle-fail countdown — visible warning so the fail is never a surprise
+      // out-of-ink retry countdown — only after the pen runs dry, so it's never a surprise
       if (alive && restT > 1) {
         const remain = Math.max(0, REST_FAIL_S - restT);
         c2d.fillStyle = colors.text;
         c2d.globalAlpha = 0.8;
         c2d.font = `600 ${Math.max(13, Math.round(s * 0.42))}px system-ui`;
         c2d.textAlign = 'center';
-        c2d.fillText(`settling — draw! ${remain.toFixed(1)}`, w / 2, Y(LEVEL_H) + s * 0.9);
+        c2d.fillText(`out of ink — retry in ${remain.toFixed(1)}`, w / 2, Y(LEVEL_H) + s * 0.9);
         c2d.globalAlpha = 1;
       }
     },

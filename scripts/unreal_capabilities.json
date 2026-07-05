@@ -1,0 +1,50 @@
+{
+  "protocolVersions": [
+    "2025-11-25",
+    "2025-06-18",
+    "2025-03-26",
+    "2024-11-05"
+  ],
+  "defaultProfile": "standard",
+  "profiles": {
+    "standard": [
+      "unreal_health",
+      "unreal_doctor",
+      "unreal_compile",
+      "unreal_run_tests",
+      "unreal_console",
+      "unreal_editor",
+      "unreal_query",
+      "unreal_object",
+      "unreal_assets",
+      "unreal_batch",
+      "unreal_raw_command"
+    ],
+    "full": [
+      "unreal_health",
+      "unreal_doctor",
+      "unreal_compile",
+      "unreal_run_tests",
+      "unreal_console",
+      "unreal_editor",
+      "unreal_query",
+      "unreal_object",
+      "unreal_assets",
+      "unreal_batch",
+      "unreal_raw_command"
+    ]
+  },
+  "toolAnnotations": {
+    "unreal_health": {"title": "Unreal Health", "readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false},
+    "unreal_doctor": {"title": "Unreal Doctor", "readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false},
+    "unreal_compile": {"title": "Unreal Compile", "readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false},
+    "unreal_run_tests": {"title": "Unreal Run Tests", "readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false},
+    "unreal_console": {"title": "Unreal Console", "readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false},
+    "unreal_editor": {"title": "Unreal Editor", "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": false},
+    "unreal_query": {"title": "Unreal Query", "readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false},
+    "unreal_object": {"title": "Unreal Objects", "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": false},
+    "unreal_assets": {"title": "Unreal Assets", "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": false},
+    "unreal_batch": {"title": "Unreal Batch", "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": false},
+    "unreal_raw_command": {"title": "Unreal Raw Command", "readOnlyHint": false, "destructiveHint": true, "idempotentHint": false, "openWorldHint": false}
+  }
+}

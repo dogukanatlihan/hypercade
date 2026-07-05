@@ -3,8 +3,11 @@
 // revolute joint (MECHANICS §5 physics line). A swipe destroys the crossed
 // link body — its joints die with it — and severed segments STAY live (the
 // twist): they keep physical presence and can be landed on or swung on.
-// 24 levels (levels.ts). Score = TOTAL sparks across best-per-level,
-// persisted in storage ('levelSparks'); one endRun per level attempt.
+// 24 levels (levels.ts) flow in-place: clearing one auto-advances to the next,
+// losing one reloads it. Score = TOTAL sparks across best-per-level, persisted
+// in storage ('levelSparks'). endRun fires ONCE per run — when all 24 are
+// cleared, or after FAIL_LIMIT losses in a row on the same level — banking
+// the cumulative stars/XP the run earned.
 
 import type { Game, GameContext } from '@sdk/types';
 import type { Physics2D, PairEvent, BodyState2D, HitEvent2D } from '@sdk/physics2d';
@@ -25,10 +28,11 @@ const SPARK_R = 0.38;
 const CUT_SLOP = 0.2; // finger slop added to the link radius
 const REST_SPEED = 0.18; // below this the detached candy counts as resting
 const REST_FAIL_S = 3; // detached + resting this long = unreachable (spec)
-const WIN_DELAY = 1.35; // chew animation before endRun
-const LOSE_DELAY = 0.95;
+const WIN_DELAY = 1.4; // 'LEVEL CLEAR' beat before auto-advancing to the next level
+const LOSE_DELAY = 1.0; // 'LOST IT' beat before reloading the same level
 const HINT_S = 6;
 const MAX_SPARKS = LEVEL_COUNT * 3; // 72
+const FAIL_LIMIT = 3; // consecutive losses on one level before the run banks out
 
 // user-data tags (sensor/hit event routing)
 const TAG_CANDY = 1;
@@ -90,6 +94,12 @@ export function createGame(): Game {
   let levelIdx = 0;
   let levelSparks: number[] = [];
   let level: LevelDef = LEVELS[0]!;
+
+  // run-scope (spans levels; reset only by start(), never by an in-place reload)
+  let failCount = 0; // consecutive losses on the current level
+  let runSparks = 0; // sparks banked across the levels cleared this run
+  let runOneCut = 0; // one-cut clears this run
+  let runCuts = 0; // total cuts across the levels cleared this run
 
   // per-attempt state
   let candy = -1;
@@ -258,22 +268,28 @@ export function createGame(): Game {
     candyAlive = false;
     levelSparks[levelIdx] = Math.max(levelSparks[levelIdx]!, collectedCount);
     ctx.storage.set('levelSparks', levelSparks);
-    ctx.storage.set('level', (levelIdx + 1) % LEVEL_COUNT); // auto-advance on next start
+    // bank this clear into the run totals — endRun reports them cumulatively
+    runSparks += collectedCount;
+    runCuts += cuts;
+    if (cuts === 1) runOneCut += 1;
+    failCount = 0; // cleared it — the streak resets
     ctx.audio.fanfare();
     ctx.audio.buzz(30);
     if (cuts === 1) ctx.hud.showCombo('ONE CUT!', true);
     else if (collectedCount === 3) ctx.hud.showCombo('ALL SPARKS!', true);
-    else ctx.hud.showCombo('LEVEL CLEAR');
+    ctx.hud.flash(levelIdx >= LEVEL_COUNT - 1 ? 'ALL LEVELS CLEAR' : 'LEVEL CLEAR', 1200);
   }
 
   function lose(msg: string): void {
     if (phase !== 'play') return;
     phase = 'lost';
     phaseT = 0;
+    failCount += 1;
     shake = ctx.settings().reducedMotion ? 0 : 0.35;
     ctx.audio.womp();
     ctx.audio.buzz(50);
-    ctx.hud.showCombo(msg);
+    ctx.hud.showCombo(msg); // why it was lost (CANDY LOST / OUT OF REACH)
+    ctx.hud.flash(failCount >= FAIL_LIMIT ? 'OUT OF TRIES' : 'LOST IT — RETRY', 1000);
   }
 
   function collectSpark(i: number): void {
@@ -336,6 +352,79 @@ export function createGame(): Game {
     }
   }
 
+  // ---- level flow ----
+  // (Re)build the world for the CURRENT levelIdx. Drives both the shell's
+  // start() and the in-place advance/retry flow, so it resets ONLY per-attempt
+  // state — run-scope counters (failCount, run totals, `ended`) are owned by
+  // start() and the outcome handlers.
+  function buildLevel(): void {
+    phys.init(0, GRAVITY);
+    phys.setHitEventThreshold(1.2);
+    level = LEVELS[levelIdx]!;
+
+    // reset attempt state
+    ropes = [];
+    sparkBodies = [];
+    bumpAnim = [];
+    trail = [];
+    parts = [];
+    flashes = [];
+    collectedCount = 0;
+    cuts = 0;
+    gestureCut = false;
+    phase = 'play';
+    phaseT = 0;
+    restT = 0;
+    t = 0;
+    shake = 0;
+    candyInJet = false;
+    lastChew = 0;
+    lastSub = '';
+
+    // candy — the payload every joint ultimately carries
+    candy = phys.createBody({ type: BODY_DYNAMIC, position: [level.candy[0], level.candy[1]], bullet: true, linearDamping: 0.05, angularDamping: 0.4 });
+    phys.addCircle(candy, CANDY_R, { density: 1, friction: 0.4, restitution: 0.25, flags: SHAPE_HIT_EVENTS | SHAPE_CONTACT_EVENTS });
+    phys.setUserData(candy, TAG_CANDY);
+    candyAlive = true;
+    candyMass = phys.getMass(candy);
+
+    for (const def of level.ropes) ropes.push(buildRope(def));
+
+    goalBody = phys.createBody({ type: BODY_STATIC, position: [level.goal[0], level.goal[1]] });
+    phys.addCircle(goalBody, GOAL_R, { flags: SHAPE_SENSOR });
+    phys.setUserData(goalBody, TAG_GOAL);
+
+    level.sparks.forEach((sp, i) => {
+      const b = phys.createBody({ type: BODY_STATIC, position: [sp[0], sp[1]] });
+      phys.addCircle(b, SPARK_R, { flags: SHAPE_SENSOR });
+      phys.setUserData(b, TAG_SPARK0 + i);
+      sparkBodies.push(b);
+    });
+
+    (level.bumpers ?? []).forEach((bd) => {
+      const b = phys.createBody({ type: BODY_STATIC, position: [bd.x, bd.y] });
+      phys.addCircle(b, bd.r, { friction: 0.1, restitution: 0.9, flags: SHAPE_HIT_EVENTS | SHAPE_CONTACT_EVENTS });
+      phys.setUserData(b, TAG_BUMPER);
+      bumpAnim.push(0);
+    });
+
+    ctx.hud.setScore(totalCommitted());
+    updateSub();
+  }
+
+  // endRun fires ONCE per run: all levels cleared, or FAIL_LIMIT losses banked.
+  // Reports the run's cumulative feats; score stays total best sparks.
+  function bankRun(): void {
+    if (ended) return;
+    ended = true;
+    ctx.endRun({
+      score: totalCommitted(),
+      durationMs: 0,
+      seed: 0,
+      stats: { oneCutSolves: runOneCut, sparks: runSparks, cuts: runCuts, level: levelIdx + 1 },
+    });
+  }
+
   return {
     meta,
 
@@ -364,10 +453,9 @@ export function createGame(): Game {
       }
     },
 
+    // Restart from the shell: resume the stored level, reset run-scope state,
+    // and (re)build that level cleanly in place.
     start(): void {
-      phys.init(0, GRAVITY);
-      phys.setHitEventThreshold(1.2);
-
       // load progress (validated — never trust stored shapes)
       const storedSparks = ctx.storage.get<number[]>('levelSparks', []);
       levelSparks = [];
@@ -377,57 +465,15 @@ export function createGame(): Game {
       }
       const rawLevel = ctx.storage.get<number>('level', 0);
       levelIdx = typeof rawLevel === 'number' && Number.isFinite(rawLevel) ? clamp(Math.floor(rawLevel), 0, LEVEL_COUNT - 1) : 0;
-      level = LEVELS[levelIdx]!;
 
-      // reset attempt state
-      ropes = [];
-      sparkBodies = [];
-      bumpAnim = [];
-      trail = [];
-      parts = [];
-      flashes = [];
-      collectedCount = 0;
-      cuts = 0;
-      gestureCut = false;
-      phase = 'play';
-      phaseT = 0;
+      // reset run-scope state (survives in-place level changes; only start() clears it)
+      failCount = 0;
+      runSparks = 0;
+      runOneCut = 0;
+      runCuts = 0;
       ended = false;
-      restT = 0;
-      t = 0;
-      shake = 0;
-      candyInJet = false;
-      lastChew = 0;
-      lastSub = '';
 
-      // candy — the payload every joint ultimately carries
-      candy = phys.createBody({ type: BODY_DYNAMIC, position: [level.candy[0], level.candy[1]], bullet: true, linearDamping: 0.05, angularDamping: 0.4 });
-      phys.addCircle(candy, CANDY_R, { density: 1, friction: 0.4, restitution: 0.25, flags: SHAPE_HIT_EVENTS | SHAPE_CONTACT_EVENTS });
-      phys.setUserData(candy, TAG_CANDY);
-      candyAlive = true;
-      candyMass = phys.getMass(candy);
-
-      for (const def of level.ropes) ropes.push(buildRope(def));
-
-      goalBody = phys.createBody({ type: BODY_STATIC, position: [level.goal[0], level.goal[1]] });
-      phys.addCircle(goalBody, GOAL_R, { flags: SHAPE_SENSOR });
-      phys.setUserData(goalBody, TAG_GOAL);
-
-      level.sparks.forEach((sp, i) => {
-        const b = phys.createBody({ type: BODY_STATIC, position: [sp[0], sp[1]] });
-        phys.addCircle(b, SPARK_R, { flags: SHAPE_SENSOR });
-        phys.setUserData(b, TAG_SPARK0 + i);
-        sparkBodies.push(b);
-      });
-
-      (level.bumpers ?? []).forEach((bd) => {
-        const b = phys.createBody({ type: BODY_STATIC, position: [bd.x, bd.y] });
-        phys.addCircle(b, bd.r, { friction: 0.1, restitution: 0.9, flags: SHAPE_HIT_EVENTS | SHAPE_CONTACT_EVENTS });
-        phys.setUserData(b, TAG_BUMPER);
-        bumpAnim.push(0);
-      });
-
-      ctx.hud.setScore(totalCommitted());
-      updateSub();
+      buildLevel();
     },
 
     step(dt: number): void {
@@ -526,23 +572,19 @@ export function createGame(): Game {
           ctx.audio.thud(2.5);
         }
         if (phaseT >= WIN_DELAY && !ended) {
-          ended = true;
-          ctx.endRun({
-            score: totalCommitted(),
-            durationMs: 0,
-            seed: 0,
-            stats: { oneCutSolves: cuts === 1 ? 1 : 0, sparks: collectedCount, cuts, level: levelIdx + 1 },
-          });
+          if (levelIdx >= LEVEL_COUNT - 1) {
+            ctx.storage.set('level', 0); // wrap — a fresh run starts back at level 1
+            bankRun(); // all 24 cleared: end the run, report cumulative sparks
+          } else {
+            levelIdx += 1; // auto-advance IN PLACE — no endRun
+            ctx.storage.set('level', levelIdx); // resume here on the next start()
+            buildLevel();
+          }
           return;
         }
       } else if (phase === 'lost' && phaseT >= LOSE_DELAY && !ended) {
-        ended = true;
-        ctx.endRun({
-          score: totalCommitted(),
-          durationMs: 0,
-          seed: 0,
-          stats: { oneCutSolves: 0, sparks: collectedCount, cuts, level: levelIdx + 1 },
-        });
+        if (failCount >= FAIL_LIMIT) bankRun(); // gave up on this level — bank stars/XP
+        else buildLevel(); // reload the SAME level IN PLACE — no endRun
         return;
       }
 

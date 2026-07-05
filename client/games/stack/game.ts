@@ -279,7 +279,7 @@ export function createGame(): Game {
       ctx.onResize(resize);
       resize(ctx.width, ctx.height);
 
-      detachInput = ctx.input.onAction(() => dropCrate());
+      detachInput = ctx.input.onActionDown(() => dropCrate());
     },
 
     start(): void {
