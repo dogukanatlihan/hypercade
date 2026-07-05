@@ -4,9 +4,11 @@ Twelve perfected hyper-casual mini-games on **real physics** — Box2D v3 (7 gam
 and **Box3D** (5 games), both compiled to WebAssembly behind mirrored C shims —
 wrapped in an optional gamified journey and served by one Node process.
 
-The product spec lives in `docs/`: [PRD](docs/PRD.md) · [MECHANICS](docs/MECHANICS.md)
-· [GAMIFICATION](docs/GAMIFICATION.md) · [TECH-BRIEF](docs/TECH-BRIEF.md) ·
-[ENGINE-NOTES](docs/ENGINE-NOTES.md) (findings log).
+Every game runs on genuine rigid-body simulation — the 2D games on Box2D v3, the
+3D games on Erin Catto's brand-new Box3D — behind two deliberately mirrored
+~700-line C shims (`w2_*` / `w3_*`) that stream flat state buffers out of WASM
+memory. See `/tech` in the running app for the full architecture writeup and live
+build numbers.
 
 ## Quickstart
 
@@ -37,7 +39,6 @@ Or `docker compose up` (run `npm run wasm` first; the toolchain stays out of the
 /server   Fastify — anon profiles, run submission + server-side meta, leaderboards
 /shared   single source of truth: scoring, stars, XP, badges, plausibility caps
 /wasm     shim2d.c + shim3d.c + vendored engines + build script + harness
-/docs     the spec + the honesty log
 ```
 
 `Box3DTestApp/` is the frozen BOXSTACK reference implementation — read-only.
