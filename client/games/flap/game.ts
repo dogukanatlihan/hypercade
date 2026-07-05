@@ -237,15 +237,20 @@ export function createGame(): Game {
     step(dt: number): void {
       if (!alive && deathTimer <= 0) return;
 
-      if (started && alive) {
-        phys.setGravityScale(bird, 1);
-        phys.readBody(bird, st);
-        phys.setLinearVelocity(bird, SCROLL_VX, st.vy); // constant forward roll
-        if (st.y > WORLD_TOP - 1) phys.setLinearVelocity(bird, SCROLL_VX, Math.min(st.vy, 0));
-      }
+      if (started && alive) phys.setGravityScale(bird, 1);
 
       const scale = deathTimer > 0 ? 0.3 : 1; // slow-mo on death
+      // Step FIRST so the just-set flap velocity is integrated. Reading the state
+      // buffer before stepping returns last frame's velocity — re-applying it here
+      // would clobber a flap set between frames and the bird would never rise.
       phys.step(dt * scale, 4);
+
+      if (started && alive) {
+        phys.readBody(bird, st);
+        // lock forward roll (survives grazes); keep the engine's fresh vertical velocity
+        const vy = st.y > WORLD_TOP - 1 ? Math.min(st.vy, 0) : st.vy;
+        phys.setLinearVelocity(bird, SCROLL_VX, vy);
+      }
       if (deathTimer > 0) {
         deathTimer -= dt;
         if (deathTimer <= 0) {
