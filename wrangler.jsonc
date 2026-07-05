@@ -21,8 +21,7 @@
     {
       "binding": "DB",
       "database_name": "hypercade",
-      // Run `wrangler d1 create hypercade` and paste the printed database_id here.
-      "database_id": "REPLACE_WITH_D1_ID",
+      "database_id": "cfeee8bd-6860-4ac0-9ffd-7cec69c46bf4",
       "migrations_dir": "migrations"
     }
   ],
