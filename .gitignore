@@ -9,3 +9,7 @@ client/sdk/gen/
 coverage/
 test-results/
 playwright-report/
+
+# internal tooling (not part of HYPERCADE)
+.qq/
+/scripts/
