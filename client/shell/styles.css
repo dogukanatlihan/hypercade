@@ -618,6 +618,83 @@ input[type='range'] {
   width: 140px;
 }
 
+/* ---------- THE FIELD (M6 home screen, HOME-SCREEN §6) ---------- */
+
+/* Fixed full-viewport canvas BEHIND the DOM grid. Progressive enhancement:
+   it only ever exists on Tier 1/2; the grid works with zero WebGL bytes. */
+.field-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1; /* below .page content, above the body background */
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+.field-canvas.visible {
+  opacity: 1;
+}
+
+/* Mobile scrim: a slight darkening between the field and the DOM so text
+   contrast holds WCAG AA at the field's brightest frame (§4). */
+@media (max-width: 699px) {
+  body.field-on::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--c-bg) 58%, transparent),
+      color-mix(in srgb, var(--c-bg) 32%, transparent)
+    );
+  }
+}
+
+/* City Core tease below the last card — where all twelve hues braid together. */
+.city-core-tease {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: clamp(32px, 8vw, 72px) auto 8px;
+  padding: 20px;
+  min-height: 96px;
+}
+
+.city-core-tease .cc-glyph {
+  font-size: clamp(1.1rem, 4vw, 1.6rem);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: var(--c-star);
+  text-shadow: 0 0 22px color-mix(in srgb, var(--c-star) 55%, transparent);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.city-core-tease:hover .cc-glyph {
+  transform: scale(1.06);
+}
+
+/* Dissolve-through veil (click → swallow the screen in the card's hue). */
+.field-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0;
+  will-change: opacity;
+}
+
+/* Belt-and-braces: reduced-motion must never show the field. */
+@media (prefers-reduced-motion: reduce) {
+  .field-canvas,
+  .field-veil {
+    display: none !important;
+  }
+}
+
 /* reduced motion: kill all shell animation */
 
 @media (prefers-reduced-motion: reduce) {

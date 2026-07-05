@@ -43,6 +43,16 @@ export const techPage: Page = (root) => {
       so input-trace re-simulation is the documented post-v1 path.</p>
     </div>
     <div class="panel">
+      <h2>The home screen is choreography, not physics</h2>
+      <p style="line-height:1.7">The living particle field behind the library is a <strong>GPGPU noise-and-attractor
+      simulation</strong> — real math (curl noise + per-game attractor programs advanced on the GPU in float textures),
+      but <em>not</em> the game physics engines. Loading Box2D/Box3D WASM just to decorate a menu would burn time-to-interactive
+      for nothing, so we don't: the games are physics-true, the menu is choreography. Each game's tile performs its
+      motion-verb — pulse, accrete, coalesce, devour — so the field is legible without ever faking a rigid body. It loads
+      only after first paint, only on capable devices, and pauses the moment you look away. Reduced-motion or an incapable
+      GPU gets the plain grid, which is the source of truth either way.</p>
+    </div>
+    <div class="panel">
       <h2>Findings log</h2>
       <p style="line-height:1.7">Box3D is v0.1 and we log what we hit: its default collision filter category is
       <em>all bits</em> (Box2D's is <code>1</code>) — runtime masking silently no-ops unless both sides carry explicit
