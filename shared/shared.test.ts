@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { starsFor, levelCost, levelFromXp, runXp, scoreQualityXp, isPlausible, STAR_THRESHOLDS } from './scoring';
-import { advanceStreak, evaluateBadges, utcDay, BADGES } from './badges';
+import { advanceStreak, evaluateBadges, utcDay, BADGES, type StreakState } from './badges';
 import { GAMES, gameMeta, DISTRICTS } from './registry';
 import type { GameId, ProgressState, RunSubmission } from './types';
 
@@ -122,7 +122,7 @@ describe('streak', () => {
   });
 
   it('resets kindly (best preserved) after an uncovered gap', () => {
-    let s = { current: 5, best: 5, shields: 0, lastDay: '2026-07-01' };
+    let s: StreakState = { current: 5, best: 5, shields: 0, lastDay: '2026-07-01' };
     s = advanceStreak(s, day('2026-07-05'));
     expect(s.current).toBe(1);
     expect(s.best).toBe(5);

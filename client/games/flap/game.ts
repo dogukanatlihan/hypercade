@@ -290,7 +290,7 @@ export function createGame(): Game {
       phys.readBody(bird, st);
       camX += (st.x - camX) * 0.35;
       const sx = (x: number): number => (x - camX) * scale + w * BIRD_X_VIEW;
-      const sy = (y: number): number => h - y * scale + (h - 12 * scale) * 0.15;
+      const sy = (y: number): number => h - 24 - y * scale; // ground 24px above the bottom edge
       const reduced = ctx.settings().reducedMotion;
       const jx = reduced ? 0 : (Math.random() - 0.5) * shake * 14;
       const jy = reduced ? 0 : (Math.random() - 0.5) * shake * 14;

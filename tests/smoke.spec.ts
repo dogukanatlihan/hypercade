@@ -57,8 +57,17 @@ for (const game of GAMES) {
       try {
         const g = c.getContext('2d');
         if (!g) return c.width > 0;
-        const d = g.getImageData(0, 0, Math.min(c.width, 50), Math.min(c.height, 50)).data;
-        return d.some((v) => v !== 0);
+        // sample three patches — games legitimately leave parts of the frame empty
+        const patches: [number, number][] = [
+          [c.width / 2 - 25, c.height / 2 - 25],
+          [c.width / 2 - 25, c.height - 60],
+          [10, c.height / 2 - 25],
+          [c.width * 0.3 - 25, c.height * 0.6 - 25],
+        ];
+        return patches.some(([x, y]) => {
+          const d = g.getImageData(Math.max(0, x), Math.max(0, y), 50, 50).data;
+          return d.some((v) => v !== 0);
+        });
       } catch {
         return c.width > 0;
       }
