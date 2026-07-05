@@ -41,3 +41,7 @@ Or `docker compose up` (run `npm run wasm` first; the toolchain stays out of the
 ```
 
 `Box3DTestApp/` is the frozen BOXSTACK reference implementation — read-only.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Vendored Box2D and Box3D are MIT (Erin Catto); their license files ship under `wasm/vendor/`.
