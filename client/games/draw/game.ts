@@ -24,7 +24,7 @@ const THICK_MAX = 0.16; // slow drag → heavy hammer
 const THICK_MIN = 0.05; // fast flick → light scaffold
 const SPEED_SLOW = 1.0; // m/s at/below → THICK_MAX
 const SPEED_FAST = 7.0; // m/s at/above → THICK_MIN
-const INK_DENSITY = 1.4; // fixed — mass scales with drawn area
+const INK_DENSITY = 1.8; // fixed — mass scales with drawn area (heavier = harder-hitting hammers)
 const NO_DRAW_R = 0.42; // can't ink directly onto a ball (just outside its 0.35 rim)
 
 const REST_FAIL_S = 3; // ink spent + everything settled this long, no reunion = retry
@@ -181,7 +181,7 @@ export function createGame(): Game {
 
     const mkBall = (pos: readonly [number, number], tag: number): number => {
       const h = phys.createBody({ type: BODY_DYNAMIC, position: pos, angularDamping: 0.05 });
-      phys.addCircle(h, BALL_R, { density: 1, friction: 0.6, restitution: 0.15, flags: SHAPE_CONTACT_EVENTS | SHAPE_HIT_EVENTS });
+      phys.addCircle(h, BALL_R, { density: 1, friction: 0.4, restitution: 0.15, flags: SHAPE_CONTACT_EVENTS | SHAPE_HIT_EVENTS });
       phys.setUserData(h, tag);
       return h;
     };
