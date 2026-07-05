@@ -25,7 +25,7 @@ const THICK_MIN = 0.05; // fast flick → light scaffold
 const SPEED_SLOW = 1.0; // m/s at/below → THICK_MAX
 const SPEED_FAST = 7.0; // m/s at/above → THICK_MIN
 const INK_DENSITY = 1.4; // fixed — mass scales with drawn area
-const NO_DRAW_R = 0.55; // can't ink directly onto a ball
+const NO_DRAW_R = 0.42; // can't ink directly onto a ball (just outside its 0.35 rim)
 
 const REST_FAIL_S = 3; // ink spent + everything settled this long, no reunion = retry
 const REST_SPEED = 0.09;
@@ -489,8 +489,13 @@ export function createGame(): Game {
 
   function updateSub(): void {
     let text: string;
-    if (simT < 5 && strokes === 0) {
-      text = levelIdx === 0 ? 'draw ink to unite the dots' : 'slow ink = heavy · fast flick = light';
+    if (simT < 7 && strokes === 0) {
+      text =
+        levelIdx === 0
+          ? 'ink is a solid that falls — draw a ramp or drop a weight to push the dots together'
+          : levelIdx === 1
+            ? 'draw above a dot to knock it — the ink lands and shoves'
+            : 'slow drag = heavy ink · fast flick = light';
     } else {
       const cells = Math.max(0, Math.min(12, Math.round((inkLeft / level.ink) * 12)));
       text = `L${levelIdx + 1}/${LEVEL_COUNT} · ${'▰'.repeat(cells)}${'▱'.repeat(12 - cells)} ${inkLeft.toFixed(1)}m`;
