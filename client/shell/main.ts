@@ -11,6 +11,7 @@ import { boardsPage } from './pages/boards';
 import { techPage } from './pages/tech';
 import { settings, applyPalette } from '@sdk/settings';
 import { progress } from './progress';
+import { startSyncLoop, syncProfile } from './api';
 
 applyPalette(settings.get().palette);
 document.documentElement.dataset['reducedMotion'] = String(settings.get().reducedMotion);
@@ -57,7 +58,12 @@ router.render = (): void => {
 };
 
 settings.changed.on('change', renderNav);
-progress.changed.on('change', renderNav);
+progress.changed.on('change', () => {
+  renderNav();
+  void import('./api').then((m) => m.syncPending());
+});
+startSyncLoop();
+settings.changed.on('change', () => void syncProfile());
 
 // iOS Safari: block pinch & double-tap zoom (games are tap-heavy)
 document.addEventListener('gesturestart', (e) => e.preventDefault());
