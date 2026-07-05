@@ -45,7 +45,7 @@ const HOLE_R0 = 0.62;
 const HOLE_R_GAIN = 2.15; // R = R0 + GAIN·(1 − e^(−growth/TAU))
 const HOLE_R_TAU = 190;
 const MAX_SPEED = 7;
-const DRAG_SENS = 0.032; // world units per CSS px of drag
+const DRAG_SENS = 0.055; // world units per CSS px of drag
 const WAKE_FACTOR = 3; // props wake to dynamic within 3× hole radius
 const RING_SEGS = 8;
 const RING_T = 0.35;
@@ -366,7 +366,7 @@ export function createGame(): Game {
       for (let attempt = 0; attempt < 40; attempt++) {
         const x = ctx.rng.range(minX, maxX);
         const z = ctx.rng.range(minZ, maxZ);
-        if (Math.hypot(x - holeX, z - holeZ) < r + 2.5) continue; // keep the spawn clear
+        if (Math.hypot(x - holeX, z - holeZ) < r + 1.2) continue; // keep the spawn clear (first food nearby)
         let ok = true;
         for (const p of spots) {
           if (Math.hypot(x - p.x, z - p.z) < r + p.r + 0.3) {
@@ -692,6 +692,35 @@ export function createGame(): Game {
 
       ctx.hud.setScore(0);
       setSub('drag to steer — eat the small stuff');
+
+      if (import.meta.env.DEV) {
+        (window as unknown as Record<string, unknown>)['__holeDbg'] = () => {
+          let nearest = Infinity;
+          let nearestInfo = '';
+          let nearestDx = 0;
+          let nearestDz = 0;
+          let dyn = 0;
+          let swallowingN = 0;
+          let eatenN = 0;
+          for (const pr of props) {
+            if (pr.eaten) {
+              eatenN++;
+              continue;
+            }
+            if (pr.dynamic) dyn++;
+            if (pr.swallowing) swallowingN++;
+            if (pr.big) continue; // aim at edible prey only
+            const d = Math.hypot(pr.x - holeX, pr.z - holeZ);
+            if (d < nearest) {
+              nearest = d;
+              nearestDx = pr.x - holeX;
+              nearestDz = pr.z - holeZ;
+              nearestInfo = `cls=${pr.cls} size=${pr.size.toFixed(2)} big=${pr.big} dyn=${pr.dynamic}`;
+            }
+          }
+          return { mode, holeX, holeZ, holeR, velX, velZ, nearest, nearestDx, nearestDz, nearestInfo, dyn, swallowingN, eatenN, score };
+        };
+      }
     },
 
     step(dt: number): void {
@@ -723,8 +752,11 @@ export function createGame(): Game {
           tvx = (tvx / tMag) * MAX_SPEED;
           tvz = (tvz / tMag) * MAX_SPEED;
         }
-        velX += (tvx - velX) * 0.55;
-        velZ += (tvz - velZ) * 0.55;
+        // snappy toward a fresh drag; glide between drag samples (a held-but-still
+        // finger keeps momentum instead of parking the hole every gap between events)
+        const blend = dragMag > 0 ? 0.55 : ctx.input.pointerDown ? 0.06 : 0.25;
+        velX += (tvx - velX) * blend;
+        velZ += (tvz - velZ) * blend;
         dragDX = 0;
         dragDY = 0;
 
@@ -739,7 +771,7 @@ export function createGame(): Game {
 
       // ---- prop pass: wake, swallow-filter, suction, sync ----
       const wakeR = holeR * WAKE_FACTOR;
-      const eatR = holeR * 0.88;
+      const eatR = holeR * 1.05;
       const edible = holeR * 2 * 0.98;
       trembleClock += dt;
       const doTremble = trembleClock >= TREMBLE_PERIOD;
@@ -793,9 +825,9 @@ export function createGame(): Game {
           continue;
         }
 
-        // gentle suction on edible prey near the rim (an applied force, engine integrates)
-        if (!p.big && dist < holeR * 1.5 && dist > 0.05) {
-          const pull = (p.engMass * 5 * (1 - dist / (holeR * 1.5))) / dist;
+        // suction on edible prey near the rim (an applied force, engine integrates)
+        if (!p.big && dist < holeR * 2.4 && dist > 0.05) {
+          const pull = (p.engMass * 11 * (1 - dist / (holeR * 2.4))) / dist;
           phys.applyForce(p.handle, -dx * pull, 0, -dz * pull);
         }
 
