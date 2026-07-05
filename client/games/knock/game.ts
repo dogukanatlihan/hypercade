@@ -102,6 +102,47 @@ function xSlots(count: number): number[] {
   return [-4.8, -1.6, 1.6, 4.8];
 }
 
+// ---- scene design ----
+// Eight topple archetypes; every scene is a curated mix so no two read the same.
+type Arch = 'stack' | 'pyramid' | 'tower' | 'wall' | 'bridge' | 'seesaw' | 'cart' | 'armored';
+interface StructDef {
+  t: Arch;
+  s: number; // size hint: stack/armored = rows, pyramid = base width, tower = height, wall = width; unused for bridge/seesaw/cart
+  z: number; // depth offset from zBase for front/back layering
+}
+interface SceneDef {
+  balls: number;
+  spread: number; // x-slot spacing multiplier (varies how tightly packed the range is)
+  items: StructDef[];
+}
+
+// Curated 20-scene progression. Every adjacent pair differs in structure COUNT or
+// archetype MIX, so consecutive scenes never look alike; heights, spacing, depth and
+// target counts all vary. Ramp gates (MECHANICS §12): seesaw ≥5, cart ≥10, armored ≥15;
+// pyramid/tower/wall/bridge seed variety from scene 1.
+const SCENES: SceneDef[] = [
+  { balls: 6, spread: 1.0, items: [{ t: 'stack', s: 3, z: 0.5 }, { t: 'pyramid', s: 3, z: -0.5 }] },
+  { balls: 6, spread: 1.0, items: [{ t: 'tower', s: 4, z: 0.8 }, { t: 'wall', s: 3, z: -0.6 }] },
+  { balls: 6, spread: 0.85, items: [{ t: 'pyramid', s: 4, z: 0.0 }, { t: 'tower', s: 5, z: 0.0 }] },
+  { balls: 5, spread: 1.05, items: [{ t: 'bridge', s: 0, z: 0.5 }, { t: 'stack', s: 4, z: -0.8 }] },
+  { balls: 6, spread: 1.0, items: [{ t: 'stack', s: 3, z: 1.0 }, { t: 'seesaw', s: 0, z: -0.5 }, { t: 'pyramid', s: 3, z: 0.3 }] },
+  { balls: 5, spread: 1.0, items: [{ t: 'wall', s: 4, z: -0.4 }, { t: 'tower', s: 5, z: 0.8 }, { t: 'pyramid', s: 3, z: 0.0 }] },
+  { balls: 6, spread: 1.05, items: [{ t: 'seesaw', s: 0, z: 0.0 }, { t: 'bridge', s: 0, z: 0.6 }, { t: 'stack', s: 4, z: -0.8 }] },
+  { balls: 5, spread: 0.95, items: [{ t: 'pyramid', s: 4, z: -0.5 }, { t: 'tower', s: 6, z: 0.5 }, { t: 'wall', s: 3, z: 0.2 }] },
+  { balls: 5, spread: 1.05, items: [{ t: 'stack', s: 4, z: 0.6 }, { t: 'seesaw', s: 0, z: -0.6 }, { t: 'bridge', s: 0, z: 0.2 }] },
+  { balls: 6, spread: 1.0, items: [{ t: 'stack', s: 3, z: 0.8 }, { t: 'cart', s: 0, z: -2.6 }, { t: 'pyramid', s: 3, z: 0.5 }] },
+  { balls: 5, spread: 1.0, items: [{ t: 'tower', s: 5, z: 0.6 }, { t: 'cart', s: 0, z: -2.8 }, { t: 'wall', s: 4, z: -0.3 }] },
+  { balls: 6, spread: 1.1, items: [{ t: 'seesaw', s: 0, z: 0.0 }, { t: 'cart', s: 0, z: -2.8 }, { t: 'bridge', s: 0, z: 0.6 }, { t: 'stack', s: 3, z: 0.3 }] },
+  { balls: 6, spread: 1.12, items: [{ t: 'pyramid', s: 4, z: -0.4 }, { t: 'cart', s: 0, z: -3.0 }, { t: 'tower', s: 6, z: 0.6 }, { t: 'wall', s: 4, z: -0.6 }] },
+  { balls: 6, spread: 1.1, items: [{ t: 'seesaw', s: 0, z: 0.2 }, { t: 'cart', s: 0, z: -2.8 }, { t: 'stack', s: 4, z: 0.6 }, { t: 'pyramid', s: 4, z: -0.4 }] },
+  { balls: 6, spread: 1.0, items: [{ t: 'armored', s: 4, z: -0.3 }, { t: 'stack', s: 3, z: 0.8 }, { t: 'pyramid', s: 3, z: 0.5 }] },
+  { balls: 6, spread: 1.1, items: [{ t: 'armored', s: 4, z: -0.4 }, { t: 'seesaw', s: 0, z: 0.4 }, { t: 'wall', s: 4, z: -0.6 }, { t: 'tower', s: 5, z: 0.8 }] },
+  { balls: 6, spread: 1.12, items: [{ t: 'armored', s: 5, z: -0.4 }, { t: 'cart', s: 0, z: -2.8 }, { t: 'bridge', s: 0, z: 0.6 }, { t: 'pyramid', s: 4, z: 0.0 }] },
+  { balls: 6, spread: 1.12, items: [{ t: 'armored', s: 4, z: -0.3 }, { t: 'tower', s: 6, z: 0.8 }, { t: 'seesaw', s: 0, z: 0.2 }, { t: 'armored', s: 4, z: -0.3 }] },
+  { balls: 6, spread: 1.12, items: [{ t: 'armored', s: 5, z: -0.4 }, { t: 'cart', s: 0, z: -2.8 }, { t: 'seesaw', s: 0, z: 0.3 }, { t: 'wall', s: 4, z: -0.5 }] },
+  { balls: 6, spread: 1.12, items: [{ t: 'armored', s: 5, z: -0.4 }, { t: 'tower', s: 6, z: 0.8 }, { t: 'cart', s: 0, z: -2.8 }, { t: 'bridge', s: 0, z: 0.5 }] },
+];
+
 export function createGame(): Game {
   const meta = gameMeta('knock')!;
   let ctx: GameContext;
@@ -311,6 +352,71 @@ export function createGame(): Game {
     targetsLeft += 1;
   }
 
+  /** Pyramid: wide stable base narrowing to a single can on the peak. Reward the topple,
+   *  but the peak can is also a clean direct-hit target so the scene is always winnable. */
+  function buildPyramid(x: number, z: number, base: number, sid: number): void {
+    const cw = CRATE_HALF * 2 + 0.012;
+    for (let r = 0; r < base; r++) {
+      const inRow = base - r;
+      const py = CRATE_HALF + r * cw;
+      const startX = x - ((inRow - 1) * cw) / 2;
+      for (let c = 0; c < inRow; c++) {
+        addBody(startX + c * cw + ctx.rng.range(-0.01, 0.01), py, z + ctx.rng.range(-0.012, 0.012), CRATE_HALF, CRATE_HALF, CRATE_HALF, { kind: KIND_BLOCK, sid, density: 0.8, friction: 0.62, mesh: crateMesh(r * base + c) });
+      }
+    }
+    addTargetCan(x, base * cw + CAN_HY + 0.01, z, sid);
+  }
+
+  /** Tower: a single precarious column — thin and tall, one clean hit tips the whole run. */
+  function buildTower(x: number, z: number, height: number, sid: number): void {
+    const cw = CRATE_HALF * 2 + 0.012;
+    for (let r = 0; r < height; r++) {
+      addBody(x + ctx.rng.range(-0.012, 0.012), CRATE_HALF + r * cw, z + ctx.rng.range(-0.012, 0.012), CRATE_HALF, CRATE_HALF, CRATE_HALF, { kind: KIND_BLOCK, sid, density: 0.8, friction: 0.55, mesh: crateMesh(r) });
+    }
+    addTargetCan(x, height * cw + CAN_HY + 0.01, z, sid);
+  }
+
+  /** Wall: wide + two crates tall — topples as a slab; cans ride along the top edge. */
+  function buildWall(x: number, z: number, width: number, sid: number): void {
+    const cw = CRATE_HALF * 2 + 0.012;
+    const startX = x - ((width - 1) * cw) / 2;
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < width; c++) {
+        addBody(startX + c * cw + ctx.rng.range(-0.01, 0.01), CRATE_HALF + r * cw, z + ctx.rng.range(-0.012, 0.012), CRATE_HALF, CRATE_HALF, CRATE_HALF, { kind: KIND_BLOCK, sid, density: 0.8, friction: 0.6, mesh: crateMesh(r * width + c) });
+      }
+    }
+    const cans = width >= 4 ? 3 : 2;
+    const topY = 2 * cw;
+    for (let i = 0; i < cans; i++) {
+      const f = i / (cans - 1);
+      addTargetCan(startX + f * (width - 1) * cw, topY + CAN_HY + 0.01, z, sid);
+    }
+  }
+
+  /** Bridge: two short pillars carry a plank; drop a pillar and the cans ride it down
+   *  (or hit them directly). Reuses the seesaw plank geometry. */
+  function buildBridge(x: number, z: number, sid: number): void {
+    const cw = CRATE_HALF * 2 + 0.012;
+    const gap = 1.3;
+    for (const side of [-1, 1]) {
+      for (let r = 0; r < 2; r++) {
+        addBody(x + side * gap + ctx.rng.range(-0.01, 0.01), CRATE_HALF + r * cw, z + ctx.rng.range(-0.012, 0.012), CRATE_HALF, CRATE_HALF, CRATE_HALF, { kind: KIND_BLOCK, sid, density: 0.9, friction: 0.72, mesh: crateMesh(r) });
+      }
+    }
+    const plankY = 2 * cw + 0.07;
+    addBody(x, plankY, z, 1.7, 0.07, 0.45, { kind: KIND_BLOCK, sid, density: 0.6, friction: 0.7, mesh: simpleMesh(plankGeo, plankMat) });
+    addTargetCan(x - 0.7, plankY + 0.07 + CAN_HY + 0.01, z, sid);
+    addTargetCan(x + 0.7, plankY + 0.07 + CAN_HY + 0.01, z, sid);
+  }
+
+  /** Armored stack (scene 15+): a topplable 2-wide tower whose armored can sits behind it,
+   *  in the fall line — the crates only crack it when the whole stack comes down. The two
+   *  crown cans stay direct-hittable, so a good low throw clears all three at once. */
+  function buildArmoredStack(x: number, z: number, rows: number, sid: number): void {
+    buildStack(x, z, rows, sid);
+    buildArmored(x, z - 1.0, sid);
+  }
+
   function buildScene(n: number): void {
     worldGroup.clear();
     recs.length = 0;
@@ -345,35 +451,31 @@ export function createGame(): Game {
     targetsLeft = 0;
     slowMo = 0;
 
-    // compact data-driven layout — ramp per MECHANICS §12
-    const structCount = n < 5 ? 2 : n < 12 ? 3 : 4;
-    const slots = xSlots(structCount);
-    const rows = 3 + Math.min(Math.floor(n / 7), 2);
-    const types: ('stack' | 'seesaw' | 'cart')[] = new Array<'stack' | 'seesaw' | 'cart'>(structCount).fill('stack');
-    if (n >= 5) types[Math.min(1, structCount - 1)] = 'seesaw';
-    if (n >= 10) types[structCount - 1] = 'cart';
+    // curated per-scene layout — distinct archetype mix + progression (see SCENES).
+    // Slot x from xSlots(count), scaled by the scene's spread; per-structure z gives depth.
+    const def = SCENES[Math.min(n, SCENES.length) - 1]!;
+    const slots = xSlots(def.items.length);
     const zBase = -8;
     let sid = 1;
-    for (let i = 0; i < structCount; i++) {
-      const t = types[i]!;
-      const x = slots[i]! + ctx.rng.range(-0.25, 0.25);
-      const z = zBase + ctx.rng.range(-0.8, 0.8);
-      if (t === 'stack') buildStack(x, z, rows, sid);
-      else if (t === 'seesaw') buildSeesaw(x, z, sid);
-      else buildCart(slots[i]!, zBase - 2.5, sid, n);
+    for (let i = 0; i < def.items.length; i++) {
+      const item = def.items[i]!;
+      const lane = slots[i]! * def.spread;
+      const sx = lane + ctx.rng.range(-0.12, 0.12);
+      const sz = zBase + item.z + ctx.rng.range(-0.25, 0.25);
+      switch (item.t) {
+        case 'stack': buildStack(sx, sz, item.s, sid); break;
+        case 'pyramid': buildPyramid(sx, sz, item.s, sid); break;
+        case 'tower': buildTower(sx, sz, item.s, sid); break;
+        case 'wall': buildWall(sx, sz, item.s, sid); break;
+        case 'bridge': buildBridge(sx, sz, sid); break;
+        case 'seesaw': buildSeesaw(sx, sz, sid); break;
+        case 'cart': buildCart(lane, sz, sid, n); break; // un-jittered lane keeps the shuttle centred
+        case 'armored': buildArmoredStack(sx, sz, item.s, sid); break;
+      }
       sid += 1;
     }
-    if (n >= 15) {
-      const armored = n >= 18 ? 2 : 1;
-      for (let a = 0; a < armored; a++) {
-        const gi = a % (structCount - 1);
-        const gx = (slots[gi]! + slots[gi + 1]!) / 2 + ctx.rng.range(-0.2, 0.2);
-        buildArmored(gx, zBase + ctx.rng.range(-0.5, 0.5), sid);
-        sid += 1;
-      }
-    }
 
-    ballsTotal = n < 5 ? 6 : n < 13 ? 5 : 4;
+    ballsTotal = def.balls;
     ballsLeft = ballsTotal;
     updateSub();
   }
