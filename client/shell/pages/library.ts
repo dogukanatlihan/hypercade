@@ -1,29 +1,20 @@
-// Landing — the library grid. Every game reachable in ≤2 taps, forever.
-// The grid renders and is clickable with ZERO WebGL (Tier 0). After first paint
-// + idle, THE FIELD (M6) lazily enhances the background on capable devices —
-// progressive enhancement only; the grid never waits on it (HOME-SCREEN §2).
+// Home — the master library (M7 neon-arcade redesign). Every game is a bold
+// generated cover-art tile; ≤2 taps to any of the 12. The DOM grid is the source
+// of truth: it renders + is clickable with ZERO WebGL. After first paint + idle,
+// THE FIELD (M6) lazily enhances the background on capable devices (HOME-SCREEN §2).
 
-import { GAMES } from '@shared/registry';
+import { GAMES, gameMeta } from '@shared/registry';
 import type { GameId } from '@shared/types';
 import type { Page } from '../router';
 import { progress } from '../progress';
 import { settings } from '@sdk/settings';
+import { coverBackground } from '../coverart';
 import type { FieldHandle } from '../home3d';
 
-const HUES: Record<string, string> = {
-  flap: '#ffb454',
-  stack: '#ff5d5d',
-  'merge-drop': '#c77dff',
-  sling: '#ff8b3d',
-  helix: '#3fd8d4',
-  bricks: '#55d6ff',
-  hole: '#8bd450',
-  plinko: '#ffd75e',
-  knock: '#ff7a9e',
-  rope: '#f78c6b',
-  draw: '#b287ff',
-  swerve: '#64f0c8',
-};
+/** Per-chroma display hue: Spectrum = each game's own hue, Unified = the primary. */
+function hueOf(id: GameId): string {
+  return settings.get().chroma === 'unified' ? 'var(--c-primary)' : (gameMeta(id)?.hue ?? 'var(--c-primary)');
+}
 
 /** Perceived luminance of a #rrggbb color, 0..1 — picks additive vs normal blend. */
 function isLight(hex: string): boolean {
@@ -38,43 +29,63 @@ function isLight(hex: string): boolean {
 
 export const libraryPage: Page = (root, ctx) => {
   const meta = settings.get().metaEnabled;
+  const total = meta ? progress.totalStars() : 0;
+  const braid = `linear-gradient(90deg, ${GAMES.map((g) => g.hue).join(', ')})`;
+
   const page = document.createElement('div');
   page.className = 'page';
   page.innerHTML = `
     <div class="hero">
+      <span class="hero-kicker">// PLAYABLE MUSEUM — 12 UNITS ONLINE</span>
       <h1>Twelve mechanics.<br /><em>Real physics.</em></h1>
-      <p>A playable museum of hyper-casual game design — every genre-defining mechanic, perfected, running on Box2D&nbsp;v3 and Box3D compiled to WebAssembly.</p>
+      <p>Not fakes. Twelve genre-defining mechanics, each on genuine rigid-body simulation — pick a cabinet and play.</p>
     </div>
-    <div class="grid"></div>
-    <a class="city-core-tease" data-link href="/journey" aria-label="City Core">
-      <span class="cc-glyph">★ ${meta ? progress.totalStars() : 0}/36</span>
+    <div class="section-label"><span class="sl-tag">// ALL CABINETS</span><span class="sl-rule"></span><span>12 · ≤2 TAPS TO PLAY</span></div>
+    <div class="cabinet-grid"></div>
+    <a class="tease-bar" data-link href="/journey" data-cc>
+      <div>
+        <span class="tb-tag">// THE JOURNEY</span>
+        <h2>Track mastery across four districts</h2>
+        <p class="tb-sub">Stars, unlocks, a city map — an optional lens over the library.</p>
+      </div>
+      <div class="tb-right">
+        <span class="tb-stars">★ ${total}/36</span>
+        <span class="tb-braid" style="background:${braid}"></span>
+        <span class="tb-cta">ENTER THE JOURNEY →</span>
+      </div>
     </a>
   `;
-  const grid = page.querySelector<HTMLElement>('.grid')!;
+  const grid = page.querySelector<HTMLElement>('.cabinet-grid')!;
   const hero = page.querySelector<HTMLElement>('.hero')!;
-  const sentinel = page.querySelector<HTMLElement>('.city-core-tease')!;
+  const sentinel = page.querySelector<HTMLElement>('.tease-bar')!;
   if (!meta) sentinel.setAttribute('hidden', '');
 
-  for (const game of GAMES) {
-    const stars = progress.starsForGame(game.id);
+  GAMES.forEach((game, i) => {
+    const stars = meta ? progress.starsForGame(game.id) : 0;
     const best = progress.bestFor(game.id);
-    const card = document.createElement('a');
-    card.className = 'card';
-    card.href = `/play/${game.id}`;
-    card.setAttribute('data-link', '');
-    card.dataset['game'] = game.id;
-    card.style.setProperty('--card-hue', HUES[game.id] ?? 'var(--c-primary)');
-    card.innerHTML = `
-      <span class="engine">${game.engine === '2d' ? 'BOX2D V3' : 'BOX3D'} · ${game.family.toUpperCase()}</span>
-      <h3>${game.title}</h3>
-      <span class="tagline">${game.tagline}</span>
-      <span class="chips">
-        ${meta ? `<span class="stars">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</span>` : ''}
-        ${best > 0 ? `<span>best ${Math.floor(best)}</span>` : '<span>play →</span>'}
+    const hue = hueOf(game.id);
+    const tile = document.createElement('a');
+    tile.className = 'cover-tile';
+    tile.href = `/play/${game.id}`;
+    tile.setAttribute('data-link', '');
+    tile.dataset['game'] = game.id;
+    tile.style.background = coverBackground(hue, game.motif);
+    tile.style.setProperty('--hue', hue);
+    const stat = best > 0 ? `<span class="ct-stat">BEST ${Math.floor(best)}</span>` : `<span class="ct-stat play">PLAY ▸</span>`;
+    tile.innerHTML = `
+      <span class="ct-index" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span>
+      <span class="ct-scrim"></span>
+      <span class="ct-top">
+        <span class="ct-engine">${game.engine === '2d' ? 'BOX2D V3' : 'BOX3D'}</span>
+        ${meta ? `<span class="ct-stars">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</span>` : ''}
+      </span>
+      <span class="ct-body">
+        <span class="ct-title">${game.title}</span>
+        <span class="ct-foot"><span class="ct-family">${game.family}</span>${stat}</span>
       </span>
     `;
-    grid.appendChild(card);
-  }
+    grid.appendChild(tile);
+  });
 
   root.appendChild(page);
 
@@ -85,11 +96,11 @@ export const libraryPage: Page = (root, ctx) => {
   let field: FieldHandle | null = null;
   let disposed = false;
   let tier = 0;
-  const cards = Array.from(grid.querySelectorAll<HTMLElement>('.card'));
+  const tiles = Array.from(grid.querySelectorAll<HTMLElement>('.cover-tile'));
 
   const pickTargets: Array<{ el: HTMLElement; sig: GameId | 'city-core' | null }> = [
     { el: hero, sig: null },
-    ...cards.map((el) => ({ el, sig: (el.dataset['game'] as GameId) })),
+    ...tiles.map((el) => ({ el, sig: el.dataset['game'] as GameId })),
     { el: sentinel, sig: 'city-core' as const },
   ];
 
@@ -137,7 +148,7 @@ export const libraryPage: Page = (root, ctx) => {
   // document-level data-link handler never fires; we navigate after the veil.
   const onGridClick = (e: MouseEvent): void => {
     if (!field || tier !== 2 || settings.get().reducedMotion) return; // let normal nav proceed
-    const a = (e.target as HTMLElement).closest('a.card');
+    const a = (e.target as HTMLElement).closest('a.cover-tile');
     if (!(a instanceof HTMLAnchorElement)) return;
     const id = a.dataset['game'] as GameId | undefined;
     if (!id) return;
@@ -145,7 +156,7 @@ export const libraryPage: Page = (root, ctx) => {
     e.stopPropagation();
     void import('../../games/index').then((m) => m.GAME_LOADERS[id]?.()).catch(() => {});
     const path = a.pathname;
-    field.transitionOut(HUES[id] ?? '#ffffff', () => ctx.navigate(path));
+    field.transitionOut(gameMeta(id)?.hue ?? '#ffffff', () => ctx.navigate(path));
   };
   grid.addEventListener('click', onGridClick, true);
 
@@ -165,7 +176,7 @@ export const libraryPage: Page = (root, ctx) => {
         halfFloat: cap.halfFloat,
         bgColor: cssBg.trim(),
         additive: !isLight(cssBg),
-        hueFor: (id) => HUES[id] ?? '#ffffff',
+        hueFor: (id) => gameMeta(id)?.hue ?? '#ffffff',
         starWeightFor: (id) => (settings.get().metaEnabled ? progress.starsForGame(id) / 3 : 0),
       });
       document.body.classList.add('field-on');

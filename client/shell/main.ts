@@ -9,19 +9,41 @@ import { journeyPage } from './pages/journey';
 import { profilePage } from './pages/profile';
 import { boardsPage } from './pages/boards';
 import { techPage } from './pages/tech';
-import { settings, applyPalette } from '@sdk/settings';
+import { settings, applyPalette, applyFeel } from '@sdk/settings';
 import { progress } from './progress';
 import { startSyncLoop, syncProfile } from './api';
 
 applyPalette(settings.get().palette);
+applyFeel(settings.get());
 document.documentElement.dataset['reducedMotion'] = String(settings.get().reducedMotion);
 
 const app = document.getElementById('app')!;
+const backdropEl = document.createElement('div');
+backdropEl.className = 'os-backdrop';
+backdropEl.setAttribute('aria-hidden', 'true');
+backdropEl.innerHTML = '<i class="os-grid"></i><i class="os-glow"></i><i class="os-scan"></i>';
+document.body.appendChild(backdropEl);
+const telemetryEl = document.createElement('div');
+telemetryEl.className = 'telemetry';
+telemetryEl.setAttribute('aria-hidden', 'true');
 const navEl = document.createElement('nav');
 navEl.className = 'nav';
 const outlet = document.createElement('div');
 outlet.style.display = 'contents';
-app.append(navEl, outlet);
+app.append(telemetryEl, navEl, outlet);
+
+function renderTelemetry(): void {
+  const hidden = location.pathname.startsWith('/play/');
+  telemetryEl.style.display = hidden ? 'none' : '';
+  if (hidden) return;
+  telemetryEl.innerHTML = `
+    <span class="tm-dot"><i></i>SYSTEM ONLINE</span>
+    <span class="tm-sep">ENGINES // BOX2D&nbsp;V3 · BOX3D</span>
+    <span class="tm-sep">WASM · 60FPS · LAT&nbsp;4MS</span>
+    <span class="tm-grow"></span>
+    <span class="tm-ver">HYPERCADE_OS · v2.6</span>
+  `;
+}
 
 function renderNav(): void {
   const meta = settings.get().metaEnabled;
@@ -55,6 +77,7 @@ const origRender = router.render.bind(router);
 router.render = (): void => {
   origRender();
   renderNav();
+  renderTelemetry();
 };
 
 settings.changed.on('change', renderNav);

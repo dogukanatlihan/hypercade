@@ -30,6 +30,12 @@ export const settingsPage: Page = (root) => {
         <p class="desc" style="margin-top:8px">paper is the high-contrast, colorblind-safe option</p>
       </div>
       <div class="panel">
+        <h2>Look</h2>
+        ${segRow('intensity', 'Signal', 'glitch, glow & scanline strength', ['minimal', 'standard', 'overclocked'], s.intensity)}
+        ${segRow('chroma', 'Chroma', 'per-game hues, or all one accent', ['spectrum', 'unified'], s.chroma)}
+        ${segRow('edges', 'Edges', 'notched arcade corners, or soft', ['notched', 'soft'], s.edges)}
+      </div>
+      <div class="panel">
         <h2>Journey</h2>
         ${toggleRow('metaEnabled', 'Journey layer', 'Stars, map, XP, badges. Progress accrues silently either way — flip back anytime and find it honored.', s.metaEnabled)}
       </div>
@@ -65,6 +71,13 @@ export const settingsPage: Page = (root) => {
         render();
       });
     });
+    page.querySelectorAll<HTMLElement>('[data-seg-opt]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const key = el.dataset['seg'] as keyof Settings;
+        settings.set(key, el.dataset['segOpt'] as never);
+        render();
+      });
+    });
     page.querySelector('[data-action="export"]')!.addEventListener('click', () => {
       const blob = new Blob([progress.exportJson()], { type: 'application/json' });
       const a = document.createElement('a');
@@ -85,6 +98,15 @@ export const settingsPage: Page = (root) => {
     <div class="setting-row">
       <div><div class="label">${label}</div><div class="desc">${desc}</div></div>
       <button class="toggle ${on ? 'on' : ''}" data-toggle="${key}" role="switch" aria-checked="${on}" aria-label="${label}"></button>
+    </div>
+  `;
+
+  const segRow = (key: string, label: string, desc: string, opts: readonly string[], val: string): string => `
+    <div class="setting-row">
+      <div><div class="label">${label}</div><div class="desc">${desc}</div></div>
+      <div class="seg" role="radiogroup" aria-label="${label}">
+        ${opts.map((o) => `<button data-seg="${key}" data-seg-opt="${o}" class="${val === o ? 'active' : ''}">${o}</button>`).join('')}
+      </div>
     </div>
   `;
 

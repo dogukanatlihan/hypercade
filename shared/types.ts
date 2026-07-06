@@ -16,6 +16,9 @@ export type GameId =
 
 export type Engine = '2d' | '3d';
 
+/** Cover-art motif key (drives the generated CSS gradient art). */
+export type Motif = 'rings' | 'bars' | 'orbs' | 'burst' | 'spiral' | 'net' | 'blob' | 'dots' | 'trace' | 'streaks';
+
 export interface GameMeta {
   id: GameId;
   title: string;
@@ -25,6 +28,12 @@ export interface GameMeta {
   family: string;
   /** Journey map district (1-4), see GAMIFICATION §4. */
   district: 1 | 2 | 3 | 4;
+  /** Accent hue (hex) — one constant per game; drives cover art, badges, chips. */
+  hue: string;
+  /** Motion-verb, shown as a chip on tiles and the spotlight. */
+  verb: string;
+  /** Cover-art motif — the generated-gradient signature for this game. */
+  motif: Motif;
 }
 
 /** Payload a game hands to the shell when a run ends. */

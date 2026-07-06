@@ -9,6 +9,10 @@ export interface Settings {
   haptics: boolean;
   reducedMotion: boolean;
   palette: 'ember' | 'aurora' | 'paper';
+  /** Neon-arcade "feel" tweaks (M7 redesign). */
+  intensity: 'minimal' | 'standard' | 'overclocked';
+  chroma: 'spectrum' | 'unified';
+  edges: 'notched' | 'soft';
   metaEnabled: boolean;
   metaPromptSeen: boolean;
   nickname: string;
@@ -22,6 +26,9 @@ const defaults: Settings = {
   haptics: true,
   reducedMotion: typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches,
   palette: 'ember',
+  intensity: 'standard',
+  chroma: 'spectrum',
+  edges: 'notched',
   metaEnabled: false,
   metaPromptSeen: false,
   nickname: '',
@@ -54,6 +61,7 @@ class SettingsStore {
     }
     this.changed.emit('change', this.state);
     if (key === 'palette') applyPalette(this.state.palette);
+    if (key === 'intensity' || key === 'chroma' || key === 'edges') applyFeel(this.state);
   }
 }
 
@@ -61,4 +69,12 @@ export const settings = new SettingsStore();
 
 export function applyPalette(palette: Settings['palette']): void {
   document.documentElement.dataset['palette'] = palette;
+}
+
+/** Stamp the M7 "feel" tweaks onto :root as data-attributes the CSS keys off. */
+export function applyFeel(s: Pick<Settings, 'intensity' | 'chroma' | 'edges'>): void {
+  const root = document.documentElement;
+  root.dataset['intensity'] = s.intensity;
+  root.dataset['chroma'] = s.chroma;
+  root.dataset['edges'] = s.edges;
 }
