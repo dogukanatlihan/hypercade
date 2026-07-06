@@ -786,10 +786,13 @@ body { font-family: var(--font-body); }
   font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.28em; text-transform: uppercase;
   color: var(--c-glow); display: block; margin-bottom: 14px;
 }
-.hero h1 { font-family: var(--font-display); font-weight: 400; letter-spacing: 0.01em; }
-.hero h1 em { animation: hc-glitch 7s infinite; }
-:root[data-intensity='minimal'] .hero h1 em { animation: none; }
-:root[data-intensity='overclocked'] .hero h1 em { animation: hc-glitch 3.2s infinite; text-shadow: 2px 0 color-mix(in srgb, var(--c-accent) 70%, transparent), -2px 0 color-mix(in srgb, var(--c-primary) 70%, transparent), 0 0 24px color-mix(in srgb, var(--c-glow) 55%, transparent); }
+.hero h1 { font-family: var(--font-display); font-weight: 400; letter-spacing: 0.005em; font-size: clamp(2rem, 6.4vw, 4.4rem); line-height: 1.04; }
+.hero h1 em {
+  animation: hc-glitch 7s infinite;
+  text-shadow: 1px 0 color-mix(in srgb, var(--c-accent) 55%, transparent), -1px 0 color-mix(in srgb, var(--c-primary) 55%, transparent), 0 0 34px color-mix(in srgb, var(--c-glow) 60%, transparent);
+}
+:root[data-intensity='minimal'] .hero h1 em { animation: none; text-shadow: 0 0 24px color-mix(in srgb, var(--c-glow) 45%, transparent); }
+:root[data-intensity='overclocked'] .hero h1 em { animation: hc-glitch 3.2s infinite; text-shadow: 3px 0 color-mix(in srgb, var(--c-accent) 75%, transparent), -3px 0 color-mix(in srgb, var(--c-primary) 75%, transparent), 0 0 44px color-mix(in srgb, var(--c-glow) 65%, transparent); }
 .hero p { font-family: var(--font-body); }
 
 /* ---------- section label rows (// ALL CABINETS ── 12 · ≤2 TAPS) ---------- */

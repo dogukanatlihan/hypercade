@@ -54,12 +54,13 @@ export const journeyPage: Page = (root, { navigate }) => {
 
   const total = progress.totalStars();
 
-  // Featured = highest best score so far, else MAWTOWN (the prototype's pick).
-  const featured =
-    GAMES.reduce<{ g: GameMeta; best: number } | null>((acc, g) => {
-      const b = progress.bestFor(g.id);
-      return !acc || b > acc.best ? { g, best: b } : acc;
-    }, null)?.g ?? GAMES.find((g) => g.id === 'hole')!;
+  // Featured = the game you've scored highest in; before any play, the curated
+  // pick is MAWTOWN (matches the design handoff).
+  const top = GAMES.reduce<{ g: GameMeta; best: number } | null>((acc, g) => {
+    const b = progress.bestFor(g.id);
+    return !acc || b > acc.best ? { g, best: b } : acc;
+  }, null);
+  const featured = (top && top.best > 0 ? top.g : null) ?? GAMES.find((g) => g.id === 'hole')!;
   const fBest = progress.bestFor(featured.id);
   const fStars = progress.starsForGame(featured.id);
   const fHue = hueOf(featured);
