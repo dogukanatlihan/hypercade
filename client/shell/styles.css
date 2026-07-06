@@ -794,6 +794,13 @@ body { font-family: var(--font-body); }
 :root[data-intensity='minimal'] .hero h1 em { animation: none; text-shadow: 0 0 24px color-mix(in srgb, var(--c-glow) 45%, transparent); }
 :root[data-intensity='overclocked'] .hero h1 em { animation: hc-glitch 3.2s infinite; text-shadow: 3px 0 color-mix(in srgb, var(--c-accent) 75%, transparent), -3px 0 color-mix(in srgb, var(--c-primary) 75%, transparent), 0 0 44px color-mix(in srgb, var(--c-glow) 65%, transparent); }
 .hero p { font-family: var(--font-body); }
+.hero-credit {
+  display: inline-block; margin-top: 16px;
+  font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--c-text-dim); border-bottom: 1px solid color-mix(in srgb, var(--c-glow) 30%, transparent);
+  padding-bottom: 2px; transition: color 0.15s, border-color 0.15s;
+}
+.hero-credit:hover { color: var(--c-glow); border-color: var(--c-glow); }
 
 /* ---------- section label rows (// ALL CABINETS ── 12 · ≤2 TAPS) ---------- */
 .section-label {

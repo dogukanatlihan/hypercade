@@ -39,6 +39,7 @@ export const libraryPage: Page = (root, ctx) => {
       <span class="hero-kicker">// PLAYABLE MUSEUM — 12 UNITS ONLINE</span>
       <h1>Twelve mechanics.<br /><em>Real physics.</em></h1>
       <p>Not fakes. Twelve genre-defining mechanics, each on genuine rigid-body simulation — pick a cabinet and play.</p>
+      <a class="hero-credit" href="https://dogukanatlihan.com" target="_blank" rel="noopener noreferrer">Made by Doğukan Atlıhan ↗</a>
     </div>
     <div class="section-label"><span class="sl-tag">// ALL CABINETS</span><span class="sl-rule"></span><span>12 · ≤2 TAPS TO PLAY</span></div>
     <div class="cabinet-grid"></div>
