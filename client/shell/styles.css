@@ -715,11 +715,11 @@ input[type='range'] {
    Self-hosted fonts, all cover art is generated CSS (zero image bytes).
    ========================================================================== */
 
-@font-face { font-family: 'Michroma'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/michroma-400.woff2') format('woff2'); }
-@font-face { font-family: 'Exo 2'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/exo2-400.woff2') format('woff2'); }
-@font-face { font-family: 'Exo 2'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/exo2-600.woff2') format('woff2'); }
-@font-face { font-family: 'Exo 2'; font-style: normal; font-weight: 800; font-display: swap; src: url('/fonts/exo2-800.woff2') format('woff2'); }
-@font-face { font-family: 'Exo 2'; font-style: normal; font-weight: 900; font-display: swap; src: url('/fonts/exo2-900.woff2') format('woff2'); }
+@font-face { font-family: 'Michroma'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/michroma-400.woff2?v=2') format('woff2'); }
+@font-face { font-family: 'Exo 2'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/exo2-400.woff2?v=2') format('woff2'); }
+@font-face { font-family: 'Exo 2'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/exo2-600.woff2?v=2') format('woff2'); }
+@font-face { font-family: 'Exo 2'; font-style: normal; font-weight: 800; font-display: swap; src: url('/fonts/exo2-800.woff2?v=2') format('woff2'); }
+@font-face { font-family: 'Exo 2'; font-style: normal; font-weight: 900; font-display: swap; src: url('/fonts/exo2-900.woff2?v=2') format('woff2'); }
 
 :root {
   --font-display: 'Michroma', ui-sans-serif, system-ui, sans-serif;
