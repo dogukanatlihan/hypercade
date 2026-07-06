@@ -4,8 +4,9 @@ dist/
 .DS_Store
 Box3DTestApp/
 server/data/*.db*
-client/public/wasm/*.wasm
-client/sdk/gen/
+# NOTE: client/sdk/gen/ (emscripten-compiled Box2D/Box3D WASM glue) is committed
+# on purpose — Cloudflare Workers Builds has no emscripten toolchain, so `npm run
+# build` there can't regenerate it. Keep it in the repo or CI builds fail.
 coverage/
 test-results/
 playwright-report/
