@@ -57,7 +57,7 @@ export const techPage: Page = (root) => {
       <p style="line-height:1.7">Box3D is v0.1 and we log what we hit: its default collision filter category is
       <em>all bits</em> (Box2D's is <code>1</code>) — runtime masking silently no-ops unless both sides carry explicit
       categories. Box2D v3's mouse joint pins the body point at the <em>initial</em> target, so drags must grab first,
-      then move. Details in <code>docs/ENGINE-NOTES.md</code> in the repo.</p>
+      then move. Both are worked around in the engine shims — documented in code, never faked.</p>
     </div>
   `;
   root.appendChild(page);
